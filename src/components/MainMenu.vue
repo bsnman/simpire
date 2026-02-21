@@ -3,9 +3,8 @@ import GPanel from './ui/GPanel.vue';
 import GButton from './ui/GButton.vue';
 
 const startGame = () => {
-  console.log('Starting game...')
-}
-
+  console.log('Starting game...');
+};
 </script>
 
 <template>
@@ -23,7 +22,6 @@ const startGame = () => {
 </template>
 
 <style scoped>
-
 .main-menu {
   display: flex;
   align-items: center;
@@ -45,5 +43,4 @@ const startGame = () => {
     width: calc(100% - 2rem);
   }
 }
-
 </style>
