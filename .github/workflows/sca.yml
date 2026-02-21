@@ -1,4 +1,4 @@
-name: SCA (Dependency Review)
+name: SCA
 
 on:
   pull_request:
@@ -36,7 +36,7 @@ jobs:
         run: npm run format:check
 
   sca-audit:
-    name: SCA Audit (audit-ci)
+    name: SCA Audit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
