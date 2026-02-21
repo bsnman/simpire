@@ -10,9 +10,6 @@
 
 <style scoped>
 .game-panel {
-  width: 100%;
-  height: 100%;
-
   background-color: #222;
   color: #fff;
   border: 2px solid #555; 
