@@ -6,7 +6,9 @@ const props = defineProps<{ id: string }>();
   <div class="page game-page">
     <div class="game-panel">
       <h1>Game</h1>
-      <p>Now playing game ID: <strong>{{ props.id }}</strong></p>
+      <p>
+        Now playing game ID: <strong>{{ props.id }}</strong>
+      </p>
       <RouterLink class="back-link" to="/home">Back to home</RouterLink>
     </div>
   </div>
