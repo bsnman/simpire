@@ -1,12 +1,5 @@
-<script setup lang="ts">
-import MainMenu from './components/MainMenu.vue'
-</script>
+<script setup lang="ts"></script>
 
 <template>
-    <MainMenu />
+  <RouterView />
 </template>
-
-<style scoped>
-
-
-</style>

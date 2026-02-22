@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import { useRouter } from 'vue-router';
+
 import GPanel from './ui/GPanel.vue';
 import GButton from './ui/GButton.vue';
 
+const router = useRouter();
+
 const startGame = () => {
-  console.log('Starting game...');
+  router.push('/game/1');
 };
 </script>
 
