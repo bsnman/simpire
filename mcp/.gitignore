@@ -1,0 +1,28 @@
+ version: "3.9"
+
+services:
+  jira-mcp:
+    image: atlassian/mcp-server:latest
+    container_name: jira-mcp
+    restart: unless-stopped
+
+    environment:
+      # Jira configuration
+      ATLASSIAN_SITE: ${ATLASSIAN_SITE}
+      ATLASSIAN_EMAIL: ${ATLASSIAN_EMAIL}
+      ATLASSIAN_API_TOKEN: ${ATLASSIAN_API_TOKEN}
+
+      # Enable Jira product
+      ENABLE_JIRA: "true"
+
+      # Optional logging level
+      LOG_LEVEL: "info"
+
+    ports:
+      - "3001:3000"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

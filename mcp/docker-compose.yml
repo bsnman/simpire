@@ -1,0 +1,20 @@
+version: '3.9'
+
+services:
+  mcp-atlassian:
+    image: mcp/atlassian:latest
+    container_name: mcp-atlassian
+    restart: unless-stopped
+
+    command:
+      - --transport
+      - streamable-http
+      - --port
+      - '9000'
+      - -vv
+
+    ports:
+      - '9000:9000'
+
+    env_file:
+      - .env
