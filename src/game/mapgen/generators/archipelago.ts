@@ -103,6 +103,28 @@ const terrainForLand = (
 
 export const archipelagoMapGenerator: MapGeneratorDefinition<ArchipelagoParams> = {
   id: ARCHIPELAGO_GENERATOR_ID,
+  displayName: 'Archipelago',
+  description: 'Scattered island chains with larger surrounding seas.',
+  parameterDefinitions: [
+    {
+      key: 'seaLevelPercent',
+      label: 'Sea Level (%)',
+      description: 'Higher values produce smaller islands and more ocean.',
+      defaultValue: 74,
+      min: 0,
+      max: 100,
+      step: 1,
+    },
+    {
+      key: 'islandDensity',
+      label: 'Island Density',
+      description: 'Controls how many island centers are generated.',
+      defaultValue: 0.12,
+      min: 0.01,
+      max: 1,
+      step: 0.01,
+    },
+  ],
   validateParams: validateArchipelagoParams,
   generateTiles: (context, params) => {
     const coords = context.createRectCoords();

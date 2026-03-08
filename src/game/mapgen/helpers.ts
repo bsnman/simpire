@@ -1,6 +1,6 @@
-import type { HexCoord } from '@/types/hex';
+import type { HexCoord } from '~/types/hex';
 
-import type { SeededRandom } from '@/game/mapgen/random';
+import type { SeededRandom } from '~/game/mapgen/random';
 
 export const clamp = (value: number, min: number, max: number): number =>
   Math.max(min, Math.min(max, value));

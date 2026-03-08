@@ -7,7 +7,7 @@ import GButton from '~/components/ui/GButton.vue';
 const router = useRouter();
 
 const startGame = () => {
-  router.push('/game/1');
+  router.push('/create-game');
 };
 </script>
 
