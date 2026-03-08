@@ -41,6 +41,13 @@
 - Store files: domain-oriented (`currentGameMapStore`, `unitStore`) instead of generic names like `template`.
 - Renderer files: suffix with role (`GameRenderer`, `MapLayer`, `UnitRenderer`).
 
+## Import Paths
+
+- Use root-based imports only for app source modules.
+- Preferred style: `@/path/to/module` (example: `@/stores/currentGame/map`).
+- `/path/to/module` is also allowed and resolves from the `src` root.
+- Do not add new relative parent imports like `../` or `../../` for internal app modules.
+
 ## Quality And Safety
 
 - Linting and formatting must pass before merge.

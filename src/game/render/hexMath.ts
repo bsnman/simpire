@@ -1,4 +1,4 @@
-import type { HexCoord, HexLayout } from '../../types/hex';
+import type { HexCoord, HexLayout } from '@/types/hex';
 
 const SQRT3 = Math.sqrt(3);
 const CORNER_COUNT = 6;
