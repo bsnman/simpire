@@ -4,7 +4,11 @@ const SQRT3 = Math.sqrt(3);
 const CORNER_COUNT = 6;
 const TWO_PI = Math.PI * 2;
 
-export const axialToPixel = (coord: HexCoord, size: number, layout: HexLayout): { x: number; y: number } => {
+export const axialToPixel = (
+  coord: HexCoord,
+  size: number,
+  layout: HexLayout,
+): { x: number; y: number } => {
   if (layout === 'flat') {
     return {
       x: size * ((3 / 2) * coord.q),
