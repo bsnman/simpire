@@ -1,5 +1,5 @@
-import type { TileType } from '@/base/tiles';
-import type { HexKey, HexLayout } from '@/types/hex';
+import type { TileType } from '/base/tiles';
+import type { HexKey, HexLayout } from '/types/hex';
 
 export type MapTile = {
   q: number;

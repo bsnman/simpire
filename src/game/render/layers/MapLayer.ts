@@ -1,9 +1,9 @@
 import { Container, Graphics } from 'pixi.js';
 
-import { tiles } from '@/base/tiles';
-import { fromHexKey } from '@/types/hex';
-import type { GameMap } from '@/types/map';
-import { axialToPixel, hexCornerPoints } from '@/game/render/hexMath';
+import { tiles } from '/base/tiles';
+import { fromHexKey } from '/types/hex';
+import type { GameMap } from '/types/map';
+import { axialToPixel, hexCornerPoints } from '/game/render/hexMath';
 
 const BORDER_COLOR = '#1D1D1D';
 const FALLBACK_TILE_COLOR = '#6B7280';
