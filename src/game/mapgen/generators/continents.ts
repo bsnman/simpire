@@ -1,11 +1,12 @@
 import type { TileType } from '~/base/tiles';
+import { toHexKey } from '~/types/hex';
 
 import type {
   MapGeneratorContext,
   MapGeneratorDefinition,
   ValidationResult,
 } from '~/game/mapgen/contracts';
-import { axialDistance, percentileThreshold } from '~/game/mapgen/helpers';
+import { axialDistance, deriveSeaTerrains, percentileThreshold } from '~/game/mapgen/helpers';
 
 export const CONTINENTS_GENERATOR_ID = 'continents';
 
@@ -116,7 +117,11 @@ const terrainForLand = (
   const detailNoise = context.noiseAt(q, r, 'continents-terrain');
   const elevation = normalizedElevation * 0.82 + detailNoise * 0.18;
 
-  if (elevation > 0.76) {
+  if (elevation > 0.9) {
+    return 'mountain';
+  }
+
+  if (elevation > 0.72) {
     return 'hill';
   }
 
@@ -124,7 +129,7 @@ const terrainForLand = (
     return 'plains';
   }
 
-  return 'grass';
+  return 'grassland';
 };
 
 export const continentsMapGenerator: MapGeneratorDefinition<ContinentsParams> = {
@@ -183,6 +188,29 @@ export const continentsMapGenerator: MapGeneratorDefinition<ContinentsParams> = 
 
     const seaThreshold = percentileThreshold(scores, params.seaLevelPercent / 100);
 
+    const isLandByKey = new Set<string>();
+
+    for (let index = 0; index < coords.length; index += 1) {
+      const coord = coords[index];
+
+      if (!coord) {
+        continue;
+      }
+
+      const score = scores[index] ?? 0;
+
+      if (score > seaThreshold) {
+        isLandByKey.add(toHexKey(coord.q, coord.r));
+      }
+    }
+
+    const seaTerrainsByKey = deriveSeaTerrains(
+      coords,
+      (coord) => isLandByKey.has(toHexKey(coord.q, coord.r)),
+      context.noiseAt,
+      'continents-sea',
+    );
+
     return coords.map((coord, index) => {
       const score = scores[index] ?? 0;
 
@@ -190,7 +218,7 @@ export const continentsMapGenerator: MapGeneratorDefinition<ContinentsParams> = 
         return {
           q: coord.q,
           r: coord.r,
-          terrain: 'water' as const,
+          terrain: seaTerrainsByKey.get(toHexKey(coord.q, coord.r)) ?? 'ocean',
         };
       }
 

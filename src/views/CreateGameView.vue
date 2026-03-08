@@ -31,17 +31,17 @@ type MapSizeOption = {
 type GeneratorParams = Record<string, number>;
 
 const MAP_SIZE_OPTIONS: MapSizeOption[] = [
-  { id: 'tiny', label: 'Tiny (40x40)', width: 40, height: 40 },
-  { id: 'small', label: 'Small (50x50)', width: 50, height: 50 },
-  { id: 'medium', label: 'Medium (60x60)', width: 60, height: 60 },
-  { id: 'large', label: 'Large (75x75)', width: 75, height: 75 },
-  { id: 'huge', label: 'Huge (100x100)', width: 100, height: 100 },
+  { id: 'tiny', label: 'Tiny (50x50)', width: 50, height: 50 },
+  { id: 'small', label: 'Small (70x70)', width: 70, height: 70 },
+  { id: 'medium', label: 'Medium (90x90)', width: 90, height: 90 },
+  { id: 'large', label: 'Large (110x110)', width: 110, height: 110 },
+  { id: 'huge', label: 'Huge (130x130)', width: 130, height: 130 },
 ];
 const DEFAULT_MAP_SIZE: MapSizeOption = MAP_SIZE_OPTIONS[1] ?? {
   id: 'small',
-  label: 'Small (50x50)',
-  width: 50,
-  height: 50,
+  label: 'Small (70x70)',
+  width: 70,
+  height: 70,
 };
 
 const DEFAULT_MAP_SHAPE: Pick<MapGenerationRequest, 'layout' | 'tileSize' | 'origin'> = {
