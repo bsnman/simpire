@@ -7,12 +7,36 @@ import { useCurrentGameMapStore } from '../stores/currentGame/map';
 
 const props = defineProps<{ gameId: string }>();
 
-const canvasRef = ref(null);
+type CanvasRefElement = {
+  getBoundingClientRect: () => { left: number; top: number };
+};
+
+const canvasRef = ref<CanvasRefElement | null>(null);
 const renderer = new GameRenderer();
 const mapStore = useCurrentGameMapStore();
 const { currentMap } = storeToRefs(mapStore);
 
 let stopWatch: (() => void) | null = null;
+
+type CanvasWheelEvent = {
+  deltaY: number;
+  clientX: number;
+  clientY: number;
+  preventDefault: () => void;
+};
+
+const onCanvasWheel = (event: CanvasWheelEvent) => {
+  event.preventDefault();
+
+  const canvasElement = canvasRef.value;
+
+  if (!canvasElement) {
+    return;
+  }
+
+  const rect = canvasElement.getBoundingClientRect();
+  renderer.zoomByWheel(event.deltaY, event.clientX - rect.left, event.clientY - rect.top);
+};
 
 onMounted(async () => {
   const canvasElement = canvasRef.value;
@@ -44,7 +68,7 @@ onUnmounted(() => {
 
 <template>
   <div class="page game-page">
-    <canvas :id="props.gameId" ref="canvasRef" class="game-canvas"></canvas>
+    <canvas :id="props.gameId" ref="canvasRef" class="game-canvas" @wheel="onCanvasWheel"></canvas>
   </div>
 </template>
 
