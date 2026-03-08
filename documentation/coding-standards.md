@@ -47,6 +47,7 @@
 
 - Follow `documentation/ui-style-guide.md` for palette, typography, spacing, and motion rules.
 - Keep shared primitives (panel/button/input/modal shells) in `src/components/ui/`.
+- For native select controls, pair `GSelect` with `GSelectOption` so option rows use consistent readable foreground/background colors.
 - Build in-game overlay panels from shared UI primitives (for example, `GPanel`) before creating feature-specific wrappers.
 - Avoid duplicating one-off panel/button styles directly inside route views when a reusable primitive is appropriate.
 
