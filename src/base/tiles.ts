@@ -1,4 +1,4 @@
-import type { Tile } from '/types/tile';
+import type { Tile } from '~/types/tile';
 
 export const tiles = {
   grass: {

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
 
-import GPanel from '/components/ui/GPanel.vue';
-import GButton from '/components/ui/GButton.vue';
+import GPanel from '~/components/ui/GPanel.vue';
+import GButton from '~/components/ui/GButton.vue';
 
 const router = useRouter();
 

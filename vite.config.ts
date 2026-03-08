@@ -1,18 +1,13 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
-import { fileURLToPath, URL } from 'node:url';
-
-const srcPath = fileURLToPath(new URL('./src', import.meta.url));
+import { join } from 'path';
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue()],
   resolve: {
-    alias: [
-      {
-        find: /^\/(?!@fs\/|@id\/|src\/)/,
-        replacement: `${srcPath}/`,
-      },
-    ],
+    alias: {
+      '~': join(import.meta.dirname, 'src'),
+    },
   },
 });
