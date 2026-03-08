@@ -1,2 +1,2 @@
-export { useTemplateStore } from './template';
-export { useCurrentGameMapStore } from './currentGame/map';
+export { useTemplateStore } from '@/stores/template';
+export { useCurrentGameMapStore } from '@/stores/currentGame/map';

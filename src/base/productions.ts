@@ -1,4 +1,4 @@
-import type { Production } from '../types/production';
+import type { Production } from '@/types/production';
 
 export const productionTypes = {
   hammer: {

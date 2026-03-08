@@ -17,6 +17,7 @@ Follow these project-specific instructions when working in this repo.
 ## Standards
 
 - SAST runs via CodeQL in `.github/workflows/codeql.yml` for JavaScript/TypeScript (Vue).
+- Use root imports for internal app modules (`@/` preferred, `/` allowed). Avoid `../` parent-relative imports.
 
 ## Reminders
 

@@ -1,7 +1,7 @@
 import { Application } from 'pixi.js';
 
-import type { GameMap } from '../../types/map';
-import { MapLayer } from './layers/MapLayer';
+import type { GameMap } from '@/types/map';
+import { MapLayer } from '@/game/render/layers/MapLayer';
 
 export class GameRenderer {
   private readonly app = new Application();
