@@ -2,69 +2,51 @@ import { ref } from 'vue';
 import { defineStore } from 'pinia';
 
 import type { TileType } from '~/base/tiles';
-import type { GameMap, MapTile } from '~/types/map';
+import type { GameMap } from '~/types/map';
 import { toHexKey } from '~/types/hex';
+import {
+  CONTINENTS_GENERATOR_ID,
+  type ContinentsParams,
+  generateMap as generateMapByAlgorithm,
+  type MapGenerationRequest,
+} from '~/game/mapgen';
 
-const MAP_WIDTH = 30;
-const MAP_HEIGHT = 30;
-
-const createTile = (q: number, r: number, terrain: TileType): MapTile => ({
-  q,
-  r,
-  terrain,
-});
-
-const getTerrainFor = (q: number, r: number): TileType => {
-  const rawValue = q * 17 + r * 31;
-  const value = ((rawValue % 12) + 12) % 12;
-
-  if (value <= 1) {
-    return 'water';
-  }
-
-  if (value <= 4) {
-    return 'hill';
-  }
-
-  if (value <= 8) {
-    return 'plains';
-  }
-
-  return 'grass';
-};
-
-const createDebugMap = (): GameMap => {
-  const seedTiles: MapTile[] = [];
-
-  for (let r = 0; r < MAP_HEIGHT; r += 1) {
-    for (let col = 0; col < MAP_WIDTH; col += 1) {
-      const q = col - Math.floor(r / 2);
-      seedTiles.push(createTile(q, r, getTerrainFor(q, r)));
-    }
-  }
-
-  const tilesByKey = seedTiles.reduce<GameMap['tilesByKey']>((acc, tile) => {
-    acc[toHexKey(tile.q, tile.r)] = tile;
-    return acc;
-  }, {});
-
-  const tileKeys = seedTiles.map((tile) => toHexKey(tile.q, tile.r));
-
-  return {
-    id: 'debug-map-001',
-    layout: 'pointy',
-    tileSize: 24,
-    origin: { x: 80, y: 80 },
-    tilesByKey,
-    tileKeys,
-  };
+const DEFAULT_MAP_REQUEST: MapGenerationRequest = {
+  algorithmId: CONTINENTS_GENERATOR_ID,
+  width: 30,
+  height: 30,
+  seedHash: 'debug-map-001',
+  params: {
+    seaLevelPercent: 70,
+    continentCount: 2,
+  } satisfies ContinentsParams,
+  mapId: 'debug-map-001',
+  layout: 'pointy',
+  tileSize: 24,
+  origin: { x: 80, y: 80 },
 };
 
 export const useCurrentGameMapStore = defineStore('currentGameMap', () => {
-  const currentMap = ref<GameMap>(createDebugMap());
+  const lastGenerationRequest = ref<MapGenerationRequest>(DEFAULT_MAP_REQUEST);
+  const currentMap = ref<GameMap>(generateMapByAlgorithm(DEFAULT_MAP_REQUEST));
 
   const setMap = (nextMap: GameMap) => {
     currentMap.value = nextMap;
+  };
+
+  const generateMap = (request: MapGenerationRequest) => {
+    currentMap.value = generateMapByAlgorithm(request);
+    lastGenerationRequest.value = request;
+  };
+
+  const regenerateMap = (seedHash?: string) => {
+    const request = {
+      ...lastGenerationRequest.value,
+      seedHash: seedHash ?? lastGenerationRequest.value.seedHash,
+    };
+
+    currentMap.value = generateMapByAlgorithm(request);
+    lastGenerationRequest.value = request;
   };
 
   const setTileTerrain = (q: number, r: number, terrain: TileType) => {
@@ -83,7 +65,10 @@ export const useCurrentGameMapStore = defineStore('currentGameMap', () => {
 
   return {
     currentMap,
+    lastGenerationRequest,
     setMap,
+    generateMap,
+    regenerateMap,
     setTileTerrain,
   };
 });

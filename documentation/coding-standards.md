@@ -6,6 +6,14 @@
 - Keep modules focused by concern (model, store, renderer, view).
 - Avoid leaking framework-specific objects into domain models.
 - Prefer small pure functions for math and transformations.
+- When suggesting or implementing architecture, explicitly consider modding capability and extension points.
+
+## Modding-Friendly Architecture
+
+- Prefer contract + registry extension patterns for systems expected to be customized (map generation, AI policies, content pipelines).
+- Avoid rigid subclass hierarchies when pure-function plugins and runtime registration are sufficient.
+- Keep per-plugin configuration and validation near the plugin implementation, not in global switch statements.
+- Preserve deterministic behavior for seed-driven systems to keep modded content reproducible.
 
 ## State Management (Pinia)
 
