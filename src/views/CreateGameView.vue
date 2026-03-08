@@ -6,6 +6,7 @@ import GButton from '~/components/ui/GButton.vue';
 import GNumberInput from '~/components/ui/GNumberInput.vue';
 import GPanel from '~/components/ui/GPanel.vue';
 import GSelect from '~/components/ui/GSelect.vue';
+import GSelectOption from '~/components/ui/GSelectOption.vue';
 import {
   getMapGenerator,
   listMapGenerators,
@@ -217,9 +218,9 @@ const backToMenu = () => {
               v-model="selectedGeneratorId"
               :disabled="!generatorOptions.length"
             >
-              <option v-for="option in generatorOptions" :key="option.id" :value="option.id">
+              <GSelectOption v-for="option in generatorOptions" :key="option.id" :value="option.id">
                 {{ option.label }}
-              </option>
+              </GSelectOption>
             </GSelect>
             <p class="field-help">{{ selectedGeneratorDescription }}</p>
           </div>
@@ -227,9 +228,9 @@ const backToMenu = () => {
           <div class="input-field">
             <label class="field-label" for="map-size-select">Map Size</label>
             <GSelect id="map-size-select" v-model="selectedMapSizeId">
-              <option v-for="option in MAP_SIZE_OPTIONS" :key="option.id" :value="option.id">
+              <GSelectOption v-for="option in MAP_SIZE_OPTIONS" :key="option.id" :value="option.id">
                 {{ option.label }}
-              </option>
+              </GSelectOption>
             </GSelect>
             <p class="field-help">
               Selected: {{ selectedMapSize.width }}x{{ selectedMapSize.height }}
