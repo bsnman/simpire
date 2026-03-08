@@ -13,6 +13,7 @@
 - Place map generation logic in pure modules under `src/game/mapgen`.
 - Use a contract + registry approach.
 - Contract: `MapGeneratorDefinition` describes generator id, param validation, and deterministic tile generation.
+- For generator-driven setup UI, keep optional `displayName` / `description` and numeric `parameterDefinitions` metadata on each generator definition so forms can be rendered dynamically without hardcoded per-algorithm maps.
 - Registry: `MapGeneratorRegistry` resolves generator implementations by id and produces `GameMap`.
 - Keep generator-specific options local to each generator via `validateParams(params: unknown)` rather than global unions that require central edits.
 - Register built-in generators (`continents`, `archipelago`) at bootstrap and allow modded generators to register new ids.

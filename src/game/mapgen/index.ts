@@ -11,6 +11,7 @@ export type {
   MapGenerationRequest,
   MapGeneratorContext,
   MapGeneratorDefinition,
+  MapGeneratorNumericParameterDefinition,
   MapGeneratorRegistrationOptions,
   ValidationResult,
 } from '~/game/mapgen/contracts';

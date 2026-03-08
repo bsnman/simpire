@@ -21,6 +21,7 @@ Follow these project-specific instructions when working in this repo.
 - Use root imports for internal app modules with `/...` only.
 - When suggesting or implementing architecture, include modding capability/extension points in the decision criteria.
 - Shared UI primitives (panels/buttons/inputs/modal shells) must live in `src/components/ui/` for reuse across menu and in-game UI.
+- Map generators that support Create Game customization must expose `parameterDefinitions` metadata in their generator definition so UI controls can be derived without hardcoded per-view parameter maps.
 
 ## Reminders
 

@@ -1,7 +1,7 @@
-import type { HexCoord, HexLayout } from '@/types/hex';
-import type { MapTile } from '@/types/map';
+import type { HexCoord, HexLayout } from '~/types/hex';
+import type { MapTile } from '~/types/map';
 
-import type { SeededRandom } from '@/game/mapgen/random';
+import type { SeededRandom } from '~/game/mapgen/random';
 
 export type MapGenerationRequest = {
   algorithmId: string;
@@ -43,8 +43,22 @@ export type ValidationResult<T> =
       error: string;
     };
 
+export type MapGeneratorNumericParameterDefinition = {
+  key: string;
+  label: string;
+  description?: string;
+  defaultValue: number;
+  min?: number;
+  max?: number;
+  step?: number;
+  integer?: boolean;
+};
+
 export type MapGeneratorDefinition<TParams = unknown> = {
   id: string;
+  displayName?: string;
+  description?: string;
+  parameterDefinitions?: MapGeneratorNumericParameterDefinition[];
   validateParams: (params: unknown) => ValidationResult<TParams>;
   generateTiles: (context: MapGeneratorContext, params: TParams) => MapTile[];
 };

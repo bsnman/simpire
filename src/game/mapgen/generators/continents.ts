@@ -129,6 +129,29 @@ const terrainForLand = (
 
 export const continentsMapGenerator: MapGeneratorDefinition<ContinentsParams> = {
   id: CONTINENTS_GENERATOR_ID,
+  displayName: 'Continents',
+  description: 'Large connected landmasses with clear coastlines.',
+  parameterDefinitions: [
+    {
+      key: 'seaLevelPercent',
+      label: 'Sea Level (%)',
+      description: 'Higher values increase ocean coverage.',
+      defaultValue: 70,
+      min: 0,
+      max: 100,
+      step: 1,
+    },
+    {
+      key: 'continentCount',
+      label: 'Continent Count',
+      description: 'Number of major landmasses to seed.',
+      defaultValue: 2,
+      min: 1,
+      max: 12,
+      step: 1,
+      integer: true,
+    },
+  ],
   validateParams: validateContinentsParams,
   generateTiles: (context, params) => {
     const coords = context.createRectCoords();
