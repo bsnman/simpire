@@ -6,6 +6,20 @@
 - Stateless rendering input: renderer receives map/unit/resource data and draws it.
 - Hex grid math is centralized in pure utilities, not embedded across components.
 - Domain-first contracts: gameplay data structures should not depend on Pixi classes.
+- Architecture proposals and implementations for core systems should include modding capability as a first-class consideration.
+
+## Map Generation Architecture (Modding-Ready)
+
+- Place map generation logic in pure modules under `src/game/mapgen`.
+- Use a contract + registry approach.
+- Contract: `MapGeneratorDefinition` describes generator id, param validation, and deterministic tile generation.
+- Registry: `MapGeneratorRegistry` resolves generator implementations by id and produces `GameMap`.
+- Keep generator-specific options local to each generator via `validateParams(params: unknown)` rather than global unions that require central edits.
+- Register built-in generators (`continents`, `archipelago`) at bootstrap and allow modded generators to register new ids.
+- Determinism standard: never use `Math.random()` in generation code.
+- Determinism standard: seed all randomness from `seedHash`.
+- Determinism standard: keep coordinate iteration order stable for repeatable outputs.
+- For external mods, expose a simple registration API (for example, `registerMapGenerator`) so custom algorithms can be added without changing core files.
 
 ## Recommended Map Data Model (Hex)
 
@@ -78,7 +92,7 @@ This keeps rows visually aligned while still storing canonical axial coordinates
 
 ## Renderer Integration Flow
 
-1. Game data is created or loaded (currently hardcoded, later generator output).
+1. Game data is created or loaded (generator output from `src/game/mapgen` by default).
 2. Store action commits map data into Pinia.
 3. View initializes renderer once on mount.
 4. Renderer draws from store-provided map snapshot/data.
@@ -108,4 +122,5 @@ This keeps rows visually aligned while still storing canonical axial coordinates
 - Hex-keyed map state in `src/stores/currentGame/map.ts`
 - `GameRenderer` + `MapLayer` in `src/game/render`
 - Wheel zoom handled in the game view/renderer boundary
+- Deterministic map generation registry in `src/game/mapgen` with plugin-ready algorithm contracts
 - Next migration step is adding incremental rendering and additional layers (units/resources/overlays).
