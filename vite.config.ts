@@ -10,10 +10,6 @@ export default defineConfig({
   resolve: {
     alias: [
       {
-        find: '@',
-        replacement: srcPath,
-      },
-      {
         find: /^\/(?!@fs\/|@id\/|src\/)/,
         replacement: `${srcPath}/`,
       },

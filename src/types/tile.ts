@@ -1,4 +1,4 @@
-import type { ProductionType } from '@/base/productions';
+import type { ProductionType } from '/base/productions';
 
 export type Tile = {
   type: string;

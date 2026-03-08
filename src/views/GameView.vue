@@ -2,8 +2,8 @@
 import { storeToRefs } from 'pinia';
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 
-import { GameRenderer } from '@/game/render/GameRenderer';
-import { useCurrentGameMapStore } from '@/stores/currentGame/map';
+import { GameRenderer } from '/game/render/GameRenderer';
+import { useCurrentGameMapStore } from '/stores/currentGame/map';
 
 const props = defineProps<{ gameId: string }>();
 

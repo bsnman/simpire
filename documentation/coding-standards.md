@@ -44,8 +44,8 @@
 ## Import Paths
 
 - Use root-based imports only for app source modules.
-- Preferred style: `@/path/to/module` (example: `@/stores/currentGame/map`).
-- `/path/to/module` is also allowed and resolves from the `src` root.
+- Use `/path/to/module` (example: `/stores/currentGame/map`) for internal app modules.
+- Do not use `@/` aliases.
 - Do not add new relative parent imports like `../` or `../../` for internal app modules.
 
 ## Quality And Safety
