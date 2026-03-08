@@ -8,6 +8,7 @@ Follow these project-specific instructions when working in this repo.
 - Read `documentation/project-overview.md` before architecture or feature work.
 - Read `documentation/technical-guidance.md` before gameplay, map, renderer, or state changes.
 - Read `documentation/coding-standards.md` before editing files.
+- Read `documentation/ui-style-guide.md` before visual UI updates (menus, overlays, panels, controls).
 
 ## Updating This File
 
@@ -19,6 +20,7 @@ Follow these project-specific instructions when working in this repo.
 - SAST runs via CodeQL in `.github/workflows/codeql.yml` for JavaScript/TypeScript (Vue).
 - Use root imports for internal app modules with `/...` only.
 - When suggesting or implementing architecture, include modding capability/extension points in the decision criteria.
+- Shared UI primitives (panels/buttons/inputs/modal shells) must live in `src/components/ui/` for reuse across menu and in-game UI.
 
 ## Reminders
 
