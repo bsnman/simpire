@@ -18,7 +18,12 @@ export class MapLayer {
       const tile = map.tilesByKey[key];
       const { q, r } = tile ?? fromHexKey(key);
       const center = axialToPixel({ q, r }, map.tileSize, map.layout);
-      const points = hexCornerPoints(center.x + map.origin.x, center.y + map.origin.y, map.tileSize, map.layout);
+      const points = hexCornerPoints(
+        center.x + map.origin.x,
+        center.y + map.origin.y,
+        map.tileSize,
+        map.layout,
+      );
 
       const graphic = new Graphics();
       const tileColor = tile ? tiles[tile.terrain].color : FALLBACK_TILE_COLOR;
