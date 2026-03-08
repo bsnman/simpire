@@ -1,9 +1,9 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
 
-import type { TileType } from '/base/tiles';
-import type { GameMap, MapTile } from '/types/map';
-import { toHexKey } from '/types/hex';
+import type { TileType } from '~/base/tiles';
+import type { GameMap, MapTile } from '~/types/map';
+import { toHexKey } from '~/types/hex';
 
 const MAP_WIDTH = 30;
 const MAP_HEIGHT = 30;
