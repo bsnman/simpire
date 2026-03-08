@@ -1,4 +1,5 @@
 import type { TileType } from '~/base/tiles';
+import { toHexKey } from '~/types/hex';
 
 import type {
   MapGeneratorContext,
@@ -8,6 +9,7 @@ import type {
 import {
   axialDistance,
   clamp,
+  deriveSeaTerrains,
   percentileThreshold,
   uniqueRandomCoords,
 } from '~/game/mapgen/helpers';
@@ -90,7 +92,11 @@ const terrainForLand = (
   const detailNoise = context.noiseAt(q, r, 'archipelago-terrain');
   const elevation = normalizedElevation * 0.74 + detailNoise * 0.26;
 
-  if (elevation > 0.82) {
+  if (elevation > 0.92) {
+    return 'mountain';
+  }
+
+  if (elevation > 0.78) {
     return 'hill';
   }
 
@@ -98,7 +104,7 @@ const terrainForLand = (
     return 'plains';
   }
 
-  return 'grass';
+  return 'grassland';
 };
 
 export const archipelagoMapGenerator: MapGeneratorDefinition<ArchipelagoParams> = {
@@ -158,6 +164,29 @@ export const archipelagoMapGenerator: MapGeneratorDefinition<ArchipelagoParams> 
 
     const seaThreshold = percentileThreshold(scores, params.seaLevelPercent / 100);
 
+    const isLandByKey = new Set<string>();
+
+    for (let index = 0; index < coords.length; index += 1) {
+      const coord = coords[index];
+
+      if (!coord) {
+        continue;
+      }
+
+      const score = scores[index] ?? 0;
+
+      if (score > seaThreshold) {
+        isLandByKey.add(toHexKey(coord.q, coord.r));
+      }
+    }
+
+    const seaTerrainsByKey = deriveSeaTerrains(
+      coords,
+      (coord) => isLandByKey.has(toHexKey(coord.q, coord.r)),
+      context.noiseAt,
+      'archipelago-sea',
+    );
+
     return coords.map((coord, index) => {
       const score = scores[index] ?? 0;
 
@@ -165,7 +194,7 @@ export const archipelagoMapGenerator: MapGeneratorDefinition<ArchipelagoParams> 
         return {
           q: coord.q,
           r: coord.r,
-          terrain: 'water' as const,
+          terrain: seaTerrainsByKey.get(toHexKey(coord.q, coord.r)) ?? 'ocean',
         };
       }
 
