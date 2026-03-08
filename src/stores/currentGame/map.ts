@@ -5,24 +5,43 @@ import type { TileType } from '../../base/tiles';
 import type { GameMap, MapTile } from '../../types/map';
 import { toHexKey } from '../../types/hex';
 
+const MAP_WIDTH = 30;
+const MAP_HEIGHT = 30;
+
 const createTile = (q: number, r: number, terrain: TileType): MapTile => ({
   q,
   r,
   terrain,
 });
 
+const getTerrainFor = (q: number, r: number): TileType => {
+  const rawValue = q * 17 + r * 31;
+  const value = ((rawValue % 12) + 12) % 12;
+
+  if (value <= 1) {
+    return 'water';
+  }
+
+  if (value <= 4) {
+    return 'hill';
+  }
+
+  if (value <= 8) {
+    return 'plains';
+  }
+
+  return 'grass';
+};
+
 const createDebugMap = (): GameMap => {
-  const seedTiles: MapTile[] = [
-    createTile(0, 0, 'grass'),
-    createTile(1, 0, 'plains'),
-    createTile(2, 0, 'hill'),
-    createTile(0, 1, 'grass'),
-    createTile(1, 1, 'water'),
-    createTile(2, 1, 'plains'),
-    createTile(-1, 2, 'water'),
-    createTile(0, 2, 'grass'),
-    createTile(1, 2, 'hill'),
-  ];
+  const seedTiles: MapTile[] = [];
+
+  for (let r = 0; r < MAP_HEIGHT; r += 1) {
+    for (let col = 0; col < MAP_WIDTH; col += 1) {
+      const q = col - Math.floor(r / 2);
+      seedTiles.push(createTile(q, r, getTerrainFor(q, r)));
+    }
+  }
 
   const tilesByKey = seedTiles.reduce<GameMap['tilesByKey']>((acc, tile) => {
     acc[toHexKey(tile.q, tile.r)] = tile;
@@ -34,8 +53,8 @@ const createDebugMap = (): GameMap => {
   return {
     id: 'debug-map-001',
     layout: 'pointy',
-    tileSize: 42,
-    origin: { x: 180, y: 140 },
+    tileSize: 24,
+    origin: { x: 80, y: 80 },
     tilesByKey,
     tileKeys,
   };

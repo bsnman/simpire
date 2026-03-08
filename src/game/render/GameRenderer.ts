@@ -7,6 +7,9 @@ export class GameRenderer {
   private readonly app = new Application();
   private readonly mapLayer = new MapLayer();
   private initialized = false;
+  private zoom = 0.62;
+  private readonly minZoom = 0.3;
+  private readonly maxZoom = 2.5;
 
   async init(canvas: unknown) {
     if (this.initialized) {
@@ -25,6 +28,7 @@ export class GameRenderer {
     });
 
     this.app.stage.addChild(this.mapLayer.container);
+    this.app.stage.scale.set(this.zoom);
     this.initialized = true;
   }
 
@@ -34,6 +38,28 @@ export class GameRenderer {
     }
 
     this.mapLayer.render(map);
+  }
+
+  zoomByWheel(deltaY: number, screenX: number, screenY: number) {
+    if (!this.initialized) {
+      return;
+    }
+
+    const factor = deltaY < 0 ? 1.1 : 0.9;
+    const oldZoom = this.zoom;
+    const nextZoom = Math.min(this.maxZoom, Math.max(this.minZoom, oldZoom * factor));
+
+    if (nextZoom === oldZoom) {
+      return;
+    }
+
+    const stage = this.app.stage;
+    const worldX = (screenX - stage.position.x) / oldZoom;
+    const worldY = (screenY - stage.position.y) / oldZoom;
+
+    stage.scale.set(nextZoom);
+    stage.position.set(screenX - worldX * nextZoom, screenY - worldY * nextZoom);
+    this.zoom = nextZoom;
   }
 
   destroy() {
