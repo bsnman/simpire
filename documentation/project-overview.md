@@ -7,13 +7,13 @@
 - Rendering: PixiJS (for game view)
 - State management: Pinia
 - Routing: Vue Router
-- Current maturity: early prototype transitioning to game architecture
+- Current maturity: early prototype with first rendering layer implemented
 
 ## Game Context
 
 - Game map is tile-based on a hexagonal grid.
 - Game view route: `/game/:gameId`.
-- Initial renderer work should accept provided map data and render it correctly.
+- Current renderer supports map drawing (MapLayer) and mouse-wheel zoom.
 - Map generation will be added later and should plug into existing map data contracts.
 
 ## Architecture Direction
@@ -29,12 +29,12 @@
   Domain types and pure helpers (hex math, map contracts).
 - `src/stores`:
   Current game state and controlled state mutations/actions.
-- `src/game/render` (to be created):
+- `src/game/render`:
   Pixi application setup, layer management, and renderers by concern.
 - `src/views`:
   Route-level components that connect store state to renderer lifecycle.
 
 ## Near-Term Goal
 
-- Implement a renderer that can draw a hex map from deterministic input data.
+- Extend renderer beyond map layer (units/resources/overlay layers).
 - Use stable map data shape now so map generator integration later is a replace-in-place operation.

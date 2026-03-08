@@ -19,6 +19,7 @@
 - Renderer code must be deterministic for identical input state.
 - Separate layers by concern: map, resources, units, overlays.
 - Keep coordinate conversion in shared hex utility modules.
+- Keep camera/view interactions (zoom, pan) in renderer or view glue code, not Pinia gameplay state.
 - Avoid game-rule decisions in renderer modules.
 
 ## Hex/Grid Standards
@@ -26,6 +27,7 @@
 - Primary coordinate system: axial (`q`, `r`).
 - Key format for lookups: `${q},${r}`.
 - Avoid 2D array indexing as canonical storage for hex maps.
+- For rectangular pointy-top fixtures, derive axial `q` from column via `q = col - floor(r / 2)`.
 
 ## Vue Standards
 

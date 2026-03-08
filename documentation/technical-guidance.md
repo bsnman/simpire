@@ -27,6 +27,8 @@ type MapTile = {
 type GameMap = {
   id: string;
   layout: 'pointy' | 'flat';
+  tileSize: number;
+  origin: { x: number; y: number };
   tilesByKey: Record<HexKey, MapTile>;
   tileKeys: HexKey[]; // stable iteration for rendering
 };
@@ -56,7 +58,23 @@ Suggested pattern:
 - Own Pixi `Application` and render layers.
 - Convert domain coords to pixel positions through hex layout helpers.
 - Render map first, then resources, then units, then overlays/UI layer.
+- Handle view-only controls such as zoom/pan (do not store these in Pinia game state).
 - Do not mutate game rules state; only reflect current state visually.
+
+## Rectangular Map Fixture Guidance (Pointy Layout)
+
+For pointy-top maps, generating `q: 0..N, r: 0..M` creates a visually skewed parallelogram. For rectangular debug fixtures, convert row/column to axial:
+
+```ts
+for (let r = 0; r < height; r += 1) {
+  for (let col = 0; col < width; col += 1) {
+    const q = col - Math.floor(r / 2);
+    // create tile at (q, r)
+  }
+}
+```
+
+This keeps rows visually aligned while still storing canonical axial coordinates.
 
 ## Renderer Integration Flow
 
@@ -64,7 +82,8 @@ Suggested pattern:
 2. Store action commits map data into Pinia.
 3. View initializes renderer once on mount.
 4. Renderer draws from store-provided map snapshot/data.
-5. On state changes, trigger targeted renderer updates (full redraw only for early prototype).
+5. View forwards wheel input to renderer for zoom-in/zoom-out around cursor position.
+6. On state changes, trigger targeted renderer updates (full redraw only for early prototype).
 
 ## Hex Utility Guidance
 
@@ -85,8 +104,8 @@ Suggested pattern:
 
 ## Migration Note For Existing Code
 
-- Current map prototype in `src/stores/currentGame/map.ts` uses nested arrays and inconsistent store naming.
-- During renderer implementation:
-- Rename stores to domain-specific names.
-- Introduce explicit map contracts.
-- Keep temporary map fixtures but shape them to final contract.
+- Current implementation already uses:
+- Hex-keyed map state in `src/stores/currentGame/map.ts`
+- `GameRenderer` + `MapLayer` in `src/game/render`
+- Wheel zoom handled in the game view/renderer boundary
+- Next migration step is adding incremental rendering and additional layers (units/resources/overlays).
