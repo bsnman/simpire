@@ -67,6 +67,9 @@
 ## Quality And Safety
 
 - Linting and formatting must pass before merge.
+- Unit and component tests run with `vitest` (`npm test`).
+- Vue component tests should use `@vue/test-utils` and `*.spec.ts` files under `src/`.
+- Map generation changes must include deterministic unit tests (same seed reproducibility, changed seed variation, parameter bounds).
 - Security scanning baseline includes CodeQL workflow in `.github/workflows/codeql.yml`.
 - When changing standards or architecture direction, update:
 - `documentation/*.md` files as needed.
