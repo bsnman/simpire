@@ -2,6 +2,10 @@ import { ref } from 'vue';
 import { defineStore } from 'pinia';
 
 import { canPlaceResourceOnTerrain, type ResourceType } from '~/base/resources';
+import {
+  canPlaceTerrainFeatureOnTerrain,
+  type TerrainFeatureType,
+} from '~/base/terrainFeatures';
 import type { TileType } from '~/base/tiles';
 import type { GameMap } from '~/types/map';
 import { toHexKey } from '~/types/hex';
@@ -61,6 +65,12 @@ export const useCurrentGameMapStore = defineStore('currentGameMap', () => {
       return;
     }
 
+    const terrainFeatureId =
+      existing.terrainFeatureId &&
+      !canPlaceTerrainFeatureOnTerrain(existing.terrainFeatureId, terrain)
+        ? undefined
+        : existing.terrainFeatureId;
+
     const resourceId =
       existing.resourceId && !canPlaceResourceOnTerrain(existing.resourceId, terrain)
         ? undefined
@@ -69,8 +79,36 @@ export const useCurrentGameMapStore = defineStore('currentGameMap', () => {
     currentMap.value.tilesByKey[key] = {
       ...existing,
       terrain,
+      terrainFeatureId,
       resourceId,
     };
+  };
+
+  const setTileTerrainFeature = (
+    q: number,
+    r: number,
+    terrainFeatureId?: TerrainFeatureType,
+  ): boolean => {
+    const key = toHexKey(q, r);
+    const existing = currentMap.value.tilesByKey[key];
+
+    if (!existing) {
+      return false;
+    }
+
+    if (
+      terrainFeatureId &&
+      !canPlaceTerrainFeatureOnTerrain(terrainFeatureId, existing.terrain)
+    ) {
+      return false;
+    }
+
+    currentMap.value.tilesByKey[key] = {
+      ...existing,
+      terrainFeatureId,
+    };
+
+    return true;
   };
 
   const setTileResource = (q: number, r: number, resourceId?: ResourceType): boolean => {
@@ -100,6 +138,7 @@ export const useCurrentGameMapStore = defineStore('currentGameMap', () => {
     generateMap,
     regenerateMap,
     setTileTerrain,
+    setTileTerrainFeature,
     setTileResource,
   };
 });
