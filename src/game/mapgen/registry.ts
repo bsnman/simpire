@@ -153,6 +153,7 @@ export class MapGeneratorRegistry {
     }
 
     const random = createSeededRandom(normalized.seedHash);
+    const streamSeed = (name: string) => `${normalized.seedHash}::${name}`;
     const context: MapGeneratorContext = {
       width: normalized.width,
       height: normalized.height,
@@ -162,6 +163,8 @@ export class MapGeneratorRegistry {
       origin: normalized.origin,
       random,
       noiseAt: (q, r, salt) => hashNoiseAt(normalized.seedHash, q, r, salt),
+      createRandomStream: (name) => createSeededRandom(streamSeed(name)),
+      noiseAtWithSeed: (stream, q, r, salt) => hashNoiseAt(streamSeed(stream), q, r, salt),
       createRectCoords: () => createRectCoords(normalized.width, normalized.height),
     };
 

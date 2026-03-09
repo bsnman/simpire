@@ -236,7 +236,7 @@ Migration note:
 ## 7. Risks and Mitigations
 
 - Risk: Performance drop from Voronoi/tectonic passes.
-- Mitigation: start with simple O(N*seedCount) where seedCount is bounded; optimize hotspots only after profiling.
+- Mitigation: start with simple O(N\*seedCount) where seedCount is bounded; optimize hotspots only after profiling.
 - Risk: Overfitting to visual metrics and harming gameplay.
 - Mitigation: keep map-quality + gameplay-shape metrics side by side.
 - Risk: Contract churn breaking mods.

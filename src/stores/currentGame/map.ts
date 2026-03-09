@@ -18,8 +18,11 @@ const DEFAULT_MAP_REQUEST: MapGenerationRequest = {
   height: 30,
   seedHash: 'debug-map-001',
   params: {
-    seaLevelPercent: 70,
-    continentCount: 2,
+    landRatio: 0.32,
+    continentCountTarget: 2,
+    tectonicStrength: 0.62,
+    coastlineRoughness: 0.58,
+    mountainIntensity: 0.58,
   } satisfies ContinentsParams,
   mapId: 'debug-map-001',
   layout: 'pointy',
