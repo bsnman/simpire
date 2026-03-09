@@ -25,6 +25,7 @@ Follow these project-specific instructions when working in this repo.
 - Map generators that support Create Game customization must expose `parameterDefinitions` metadata in their generator definition so UI controls can be derived without hardcoded per-view parameter maps.
 - Terrain cover (for example forest, jungle, bamboo, reeds) must be modeled as a terrain-feature layer separate from economic resources so both can coexist on a tile.
 - For macro terrain generation, avoid directional bias (for example diagonal streak artifacts) by using symmetric hex-neighbor rules, deterministic shuffled iteration where applicable, and isotropic/rotated noise sampling.
+- Keep macro-mask primary region selection close to target land ratio before final rebalance; avoid large one-pass rebalance corrections because they can introduce single-axis land streak artifacts.
 - Automated tests use Vitest (`npm test`), Vue component tests use `@vue/test-utils`, and test files should be colocated as `*.spec.ts` under `src/`.
 
 ## Reminders
