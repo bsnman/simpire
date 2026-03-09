@@ -85,6 +85,7 @@ Use all of these checks during implementation:
 - Do not grow land with a fixed scanline order (for example NW->SE passes).
 - If cellular/iterative updates are used, process cells in hash-shuffled deterministic order.
 - Ensure neighbor rules are symmetric across all 6 hex directions.
+- Keep macro region preselection within a tight tolerance of target land ratio so final rebalance is a small correction, not a large global sweep.
 - Avoid single-axis thresholding from one noise sample; blend rotated fields.
 - Add domain warp before thresholding land masks.
 - Validate with an orientation histogram of coastline/height gradients; no dominant diagonal bin should persist across many seeds.

@@ -4,6 +4,11 @@ import type { MapTile } from '~/types/map';
 import { isLandAt, type MapGrid } from '~/game/mapgen/pipeline/grid';
 
 const WATER_TERRAINS = new Set<TileType>(['ocean', 'deep_sea', 'coastal_sea']);
+const OPPOSITE_DIRECTION_PAIRS = [
+  [0, 3],
+  [1, 4],
+  [2, 5],
+] as const;
 
 export type MapQualityMetrics = {
   landRatio: number;
@@ -170,6 +175,13 @@ export type AggregatedMapQualityMetrics = {
   directionalityScore: AggregatedMetricSummary;
 };
 
+export type LandCorridorMetrics = {
+  tileCount: number;
+  tileRatio: number;
+  dominantAxis: 0 | 1 | 2;
+  axisCounts: [number, number, number];
+};
+
 const summarize = (values: readonly number[]): AggregatedMetricSummary => {
   if (!values.length) {
     return {
@@ -199,5 +211,85 @@ export const aggregateMapQualityMetrics = (
     largestLandmassShare: summarize(samples.map((sample) => sample.largestLandmassShare)),
     coastlineComplexity: summarize(samples.map((sample) => sample.coastlineComplexity)),
     directionalityScore: summarize(samples.map((sample) => sample.directionalityScore)),
+  };
+};
+
+export const calculateLandCorridorMetrics = (
+  grid: MapGrid,
+  landMask: ArrayLike<number>,
+): LandCorridorMetrics => {
+  const axisCounts: [number, number, number] = [0, 0, 0];
+  let tileCount = 0;
+  let landTileCount = 0;
+
+  for (let tileIndex = 0; tileIndex < grid.tiles.length; tileIndex += 1) {
+    if (!isLandAt(landMask, tileIndex)) {
+      continue;
+    }
+
+    landTileCount += 1;
+    const neighbors = grid.neighborsByIndex[tileIndex] ?? [];
+
+    if (neighbors.length < 6 || neighbors.some((neighborIndex) => neighborIndex < 0)) {
+      continue;
+    }
+
+    for (let axis = 0; axis < OPPOSITE_DIRECTION_PAIRS.length; axis += 1) {
+      const pair = OPPOSITE_DIRECTION_PAIRS[axis];
+
+      if (!pair) {
+        continue;
+      }
+
+      const [forwardDirection, backwardDirection] = pair;
+      const forwardIndex = neighbors[forwardDirection];
+      const backwardIndex = neighbors[backwardDirection];
+
+      if (typeof forwardIndex !== 'number' || typeof backwardIndex !== 'number') {
+        continue;
+      }
+
+      if (!isLandAt(landMask, forwardIndex) || !isLandAt(landMask, backwardIndex)) {
+        continue;
+      }
+
+      let otherDirectionsAreWater = true;
+
+      for (let direction = 0; direction < neighbors.length; direction += 1) {
+        if (direction === forwardDirection || direction === backwardDirection) {
+          continue;
+        }
+
+        const neighborIndex = neighbors[direction];
+
+        if (typeof neighborIndex !== 'number') {
+          continue;
+        }
+
+        if (isLandAt(landMask, neighborIndex)) {
+          otherDirectionsAreWater = false;
+          break;
+        }
+      }
+
+      if (otherDirectionsAreWater) {
+        tileCount += 1;
+        axisCounts[axis] = (axisCounts[axis] ?? 0) + 1;
+        break;
+      }
+    }
+  }
+
+  const dominantAxis = axisCounts.reduce(
+    (currentBest, value, axis) =>
+      value > (axisCounts[currentBest] ?? 0) ? axis : currentBest,
+    0,
+  ) as 0 | 1 | 2;
+
+  return {
+    tileCount,
+    tileRatio: landTileCount > 0 ? tileCount / landTileCount : 0,
+    dominantAxis,
+    axisCounts,
   };
 };

@@ -237,6 +237,7 @@ export const buildMacroMask = (
     1,
     Math.min(voronoi.regions.length, Math.round(config.primaryRegionTarget)),
   );
+  const targetLandTiles = Math.round(grid.tiles.length * clampedLandRatio);
   const maxRegionSize = voronoi.regions.reduce(
     (currentMax, region) => Math.max(currentMax, region.tileIndices.length),
     1,
@@ -251,25 +252,84 @@ export const buildMacroMask = (
   let landTileCount = 0;
   let chosenRegions = 0;
 
+  const addRegionToLandMask = (regionId: number): boolean => {
+    const region = voronoi.regions[regionId];
+
+    if (!region) {
+      return false;
+    }
+
+    let addedAny = false;
+
+    for (const tileIndex of region.tileIndices) {
+      const currentValue = landMask[tileIndex] ?? 0;
+
+      if (currentValue > 0) {
+        continue;
+      }
+
+      landMask[tileIndex] = 1;
+      landTileCount += 1;
+      addedAny = true;
+    }
+
+    return addedAny;
+  };
+
+  const primaryRegionMinCount = Math.max(
+    1,
+    Math.min(
+      primaryRegionTarget,
+      Math.floor(primaryRegionTarget * (0.35 + clamp(config.chainTendency, 0, 1) * 0.1)),
+    ),
+  );
+  const primaryRegionOvershootTolerance = clamp(
+    1.04 +
+      (1 - clamp(config.fragmentation, 0, 1)) * 0.08 +
+      clamp(config.largeMassBias, 0, 1) * 0.05,
+    1.04,
+    1.2,
+  );
+
   for (const regionId of sortedRegionIds) {
+    if (chosenRegions >= primaryRegionTarget) {
+      break;
+    }
+
     const region = voronoi.regions[regionId];
 
     if (!region) {
       continue;
     }
 
-    if (chosenRegions < primaryRegionTarget) {
-      for (const tileIndex of region.tileIndices) {
-        landMask[tileIndex] = 1;
-        landTileCount += 1;
-      }
+    const mustTakeRegion = chosenRegions < primaryRegionMinCount;
+    const projectedLandCount = landTileCount + region.tileIndices.length;
 
+    if (
+      !mustTakeRegion &&
+      projectedLandCount > targetLandTiles * primaryRegionOvershootTolerance
+    ) {
+      continue;
+    }
+
+    if (addRegionToLandMask(regionId)) {
       chosenRegions += 1;
     }
   }
 
-  const targetLandTiles = Math.round(grid.tiles.length * clampedLandRatio);
-  let regionOffset = primaryRegionTarget;
+  if (chosenRegions < primaryRegionMinCount) {
+    for (const regionId of sortedRegionIds) {
+      if (chosenRegions >= primaryRegionMinCount) {
+        break;
+      }
+
+      if (addRegionToLandMask(regionId)) {
+        chosenRegions += 1;
+      }
+    }
+  }
+
+  let regionOffset = 0;
 
   while (landTileCount < targetLandTiles * 0.9 && regionOffset < sortedRegionIds.length) {
     const regionId = sortedRegionIds[regionOffset];
@@ -285,16 +345,7 @@ export const buildMacroMask = (
       continue;
     }
 
-    for (const tileIndex of region.tileIndices) {
-      const currentValue = landMask[tileIndex] ?? 0;
-
-      if (currentValue > 0) {
-        continue;
-      }
-
-      landMask[tileIndex] = 1;
-      landTileCount += 1;
-    }
+    addRegionToLandMask(regionId);
 
     regionOffset += 1;
   }
