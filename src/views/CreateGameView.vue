@@ -7,6 +7,7 @@ import GNumberInput from '~/components/ui/GNumberInput.vue';
 import GPanel from '~/components/ui/GPanel.vue';
 import GSelect from '~/components/ui/GSelect.vue';
 import GSelectOption from '~/components/ui/GSelectOption.vue';
+import GTextInput from '~/components/ui/GTextInput.vue';
 import {
   getMapGenerator,
   listMapGenerators,
@@ -56,6 +57,7 @@ const router = useRouter();
 const availableGeneratorIds = listMapGenerators();
 const selectedGeneratorId = ref<string>(availableGeneratorIds[0] ?? '');
 const selectedMapSizeId = ref<string>(DEFAULT_MAP_SIZE.id);
+const manualSeed = ref('');
 const generatorParams = ref<GeneratorParams>({});
 const isStarting = ref(false);
 const startError = ref('');
@@ -168,13 +170,15 @@ const startGame = async () => {
 
   try {
     const timestamp = Date.now();
+    const normalizedSeed = manualSeed.value.trim();
     const parameterDefinitions = selectedDefinition.parameterDefinitions ?? [];
     const request: MapGenerationRequest = {
       algorithmId: selectedGeneratorId.value,
       width: selectedMapSize.value.width,
       height: selectedMapSize.value.height,
       ...DEFAULT_MAP_SHAPE,
-      seedHash: `${selectedGeneratorId.value}-${timestamp}`,
+      seedHash:
+        normalizedSeed.length > 0 ? normalizedSeed : `${selectedGeneratorId.value}-${timestamp}`,
       mapId: `game-${timestamp}`,
       params: buildGeneratorParams(parameterDefinitions),
     };
@@ -234,6 +238,18 @@ const backToMenu = () => {
             </GSelect>
             <p class="field-help">
               Selected: {{ selectedMapSize.width }}x{{ selectedMapSize.height }}
+            </p>
+          </div>
+
+          <div class="input-field">
+            <label class="field-label" for="seed-input">Map Seed (Optional)</label>
+            <GTextInput
+              id="seed-input"
+              v-model="manualSeed"
+              placeholder="Leave blank to auto-generate seed"
+            />
+            <p class="field-help">
+              Use a fixed seed for reproducible map generation between test runs.
             </p>
           </div>
 

@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "mapgen:diagnostics": "vite-node scripts/mapgen-diagnostics.ts",
+    "mapgen:repro": "vite-node scripts/mapgen-repro.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

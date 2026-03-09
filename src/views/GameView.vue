@@ -6,10 +6,19 @@ import { productionTypes, type ProductionType } from '~/base/productions';
 import { resources } from '~/base/resources';
 import { terrainFeatures } from '~/base/terrainFeatures';
 import { tiles } from '~/base/tiles';
+import GButton from '~/components/ui/GButton.vue';
 import GPanel from '~/components/ui/GPanel.vue';
+import {
+  buildMapgenReproPayload,
+  calculateMapQualityMetricsForMap,
+  createMapDigest,
+  parseMapgenReplayInput,
+  stringifyMapgenReproPayload,
+} from '~/game/mapgen/repro';
 import { GameRenderer } from '~/game/render/GameRenderer';
 import type { MapTile } from '~/types/map';
 import { useCurrentGameMapStore } from '~/stores/currentGame/map';
+import { useMapgenDebugStore } from '~/stores/debugger/mapgen';
 
 const props = defineProps<{ gameId: string }>();
 
@@ -42,9 +51,13 @@ type CanvasKeyboardEvent = {
 const canvasRef = ref<CanvasRefElement | null>(null);
 const renderer = new GameRenderer();
 const mapStore = useCurrentGameMapStore();
-const { currentMap } = storeToRefs(mapStore);
+const mapgenDebugStore = useMapgenDebugStore();
+const { currentMap, lastGenerationRequest } = storeToRefs(mapStore);
+const { isEnabled: isMapgenDebugEnabled, includeFullMapData } = storeToRefs(mapgenDebugStore);
 const hoveredMapTile = ref<MapTile | null>(null);
 const isLeftDragPanning = ref(false);
+const mapgenDebugStatus = ref('');
+const mapgenDebugError = ref('');
 
 let stopWatch: (() => void) | null = null;
 
@@ -87,6 +100,113 @@ const hoveredTileInfo = computed(() => {
     })),
   };
 });
+
+const mapgenMetrics = computed(() =>
+  calculateMapQualityMetricsForMap(lastGenerationRequest.value, currentMap.value),
+);
+
+const mapgenDigest = computed(() => createMapDigest(currentMap.value));
+const mapgenParamsJson = computed(() =>
+  JSON.stringify(lastGenerationRequest.value.params ?? {}, null, 2),
+);
+
+const clearMapgenFeedback = () => {
+  mapgenDebugStatus.value = '';
+  mapgenDebugError.value = '';
+};
+
+const toggleMapgenDebugPanel = () => {
+  mapgenDebugStore.toggleEnabled();
+  clearMapgenFeedback();
+};
+
+const copyToClipboard = async (text: string): Promise<boolean> => {
+  if (!globalThis.navigator?.clipboard?.writeText) {
+    return false;
+  }
+
+  await globalThis.navigator.clipboard.writeText(text);
+  return true;
+};
+
+const copyMapgenReproPayload = async () => {
+  clearMapgenFeedback();
+
+  const payload = buildMapgenReproPayload({
+    request: lastGenerationRequest.value,
+    map: currentMap.value,
+    includeFullMapData: includeFullMapData.value,
+  });
+  const serializedPayload = stringifyMapgenReproPayload(payload);
+  mapgenDebugStore.setLastReproPayload(payload);
+
+  try {
+    const copied = await copyToClipboard(serializedPayload);
+
+    if (copied) {
+      mapgenDebugStatus.value = 'Repro payload copied to clipboard.';
+      return;
+    }
+
+    globalThis.window.prompt('Copy mapgen repro JSON', serializedPayload);
+    mapgenDebugStatus.value = 'Clipboard API unavailable. Payload shown in prompt for manual copy.';
+  } catch (error) {
+    mapgenDebugError.value =
+      error instanceof Error ? error.message : 'Failed to copy repro payload.';
+  }
+};
+
+const replayFromPastedPayload = () => {
+  clearMapgenFeedback();
+
+  const pasted = globalThis.window.prompt('Paste mapgen repro JSON or raw request JSON');
+
+  if (!pasted) {
+    return;
+  }
+
+  const parsed = parseMapgenReplayInput(pasted);
+
+  if (!parsed.ok) {
+    mapgenDebugError.value = parsed.error;
+    return;
+  }
+
+  mapStore.generateMap(parsed.value.request);
+
+  const currentDigest = createMapDigest(currentMap.value);
+  const hasExpectedDigest = Boolean(parsed.value.expectedMapDigest);
+  const digestMatches = parsed.value.expectedMapDigest === currentDigest;
+  const replayPayload =
+    parsed.value.payload ??
+    buildMapgenReproPayload({
+      request: parsed.value.request,
+      map: currentMap.value,
+      includeFullMapData: false,
+    });
+
+  mapgenDebugStore.setLastReproPayload(replayPayload);
+
+  if (hasExpectedDigest) {
+    mapgenDebugStatus.value = digestMatches
+      ? 'Replay succeeded and map digest matches payload.'
+      : `Replay generated different digest (expected ${parsed.value.expectedMapDigest}, got ${currentDigest}).`;
+    return;
+  }
+
+  mapgenDebugStatus.value = 'Replay succeeded from pasted request.';
+};
+
+const regenerateMapWithSameSeed = () => {
+  clearMapgenFeedback();
+  mapStore.regenerateMap(lastGenerationRequest.value.seedHash);
+  mapgenDebugStatus.value = `Regenerated map with seed "${lastGenerationRequest.value.seedHash}".`;
+};
+
+const setIncludeFullMapData = (event: { target: unknown }) => {
+  const target = event.target as { checked?: unknown } | null;
+  mapgenDebugStore.setIncludeFullMapData(target?.checked === true);
+};
 
 const onCanvasWheel = (event: CanvasWheelEvent) => {
   event.preventDefault();
@@ -285,6 +405,52 @@ onUnmounted(() => {
       @contextmenu.prevent
     ></canvas>
 
+    <GButton class="mapgen-debug-toggle" @click="toggleMapgenDebugPanel">
+      {{ isMapgenDebugEnabled ? 'Hide Map Debug' : 'Show Map Debug' }}
+    </GButton>
+
+    <GPanel v-if="isMapgenDebugEnabled" class="mapgen-debug-panel">
+      <div class="mapgen-debug-content">
+        <p class="mapgen-debug-kicker">Map Generation Debug</p>
+        <p class="mapgen-debug-row">Algorithm: {{ lastGenerationRequest.algorithmId }}</p>
+        <p class="mapgen-debug-row">Seed: {{ lastGenerationRequest.seedHash }}</p>
+        <p class="mapgen-debug-row">
+          Size: {{ lastGenerationRequest.width }}x{{ lastGenerationRequest.height }}
+        </p>
+        <p class="mapgen-debug-row">
+          Directionality: {{ mapgenMetrics.directionalityScore.toFixed(4) }} (axis
+          {{ mapgenMetrics.dominantAxis }})
+        </p>
+        <p class="mapgen-debug-row">Digest: {{ mapgenDigest }}</p>
+        <p class="mapgen-debug-row mapgen-debug-row-spaced">Params</p>
+        <pre class="mapgen-debug-json">{{ mapgenParamsJson }}</pre>
+
+        <label class="mapgen-debug-checkbox-row">
+          <input
+            type="checkbox"
+            :checked="includeFullMapData"
+            @change="setIncludeFullMapData"
+          />
+          Include full map tile data when copying payload
+        </label>
+
+        <div class="mapgen-debug-actions">
+          <GButton class="mapgen-debug-action" @click="copyMapgenReproPayload">
+            Copy Repro JSON
+          </GButton>
+          <GButton class="mapgen-debug-action" @click="replayFromPastedPayload">
+            Paste + Replay
+          </GButton>
+          <GButton class="mapgen-debug-action" @click="regenerateMapWithSameSeed">
+            Regenerate Same Seed
+          </GButton>
+        </div>
+
+        <p v-if="mapgenDebugStatus" class="mapgen-debug-status">{{ mapgenDebugStatus }}</p>
+        <p v-if="mapgenDebugError" class="mapgen-debug-error">{{ mapgenDebugError }}</p>
+      </div>
+    </GPanel>
+
     <GPanel v-if="hoveredTileInfo" class="tile-hover-panel">
       <div class="tile-hover-content">
         <p class="tile-hover-kicker">Tile</p>
@@ -346,6 +512,93 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   min-height: 100vh;
+}
+
+.mapgen-debug-toggle {
+  position: absolute;
+  top: clamp(0.8rem, 2vw, 1.3rem);
+  right: clamp(0.8rem, 2vw, 1.3rem);
+  z-index: 3;
+}
+
+.mapgen-debug-panel {
+  position: absolute;
+  top: clamp(3.9rem, 8vw, 4.3rem);
+  right: clamp(0.8rem, 2vw, 1.3rem);
+  width: min(30rem, calc(100vw - 1.6rem));
+  padding: 0.85rem;
+  z-index: 2;
+}
+
+.mapgen-debug-content {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.mapgen-debug-kicker {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: rgba(225, 229, 237, 0.88);
+}
+
+.mapgen-debug-row {
+  margin: 0;
+  color: rgba(214, 220, 232, 0.95);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.mapgen-debug-row-spaced {
+  margin-top: 0.2rem;
+}
+
+.mapgen-debug-json {
+  margin: 0;
+  padding: 0.55rem 0.62rem;
+  max-height: 8.5rem;
+  overflow: auto;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(176, 189, 209, 0.28);
+  background: rgba(9, 15, 24, 0.8);
+  color: #f5f7fb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.mapgen-debug-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.12rem;
+  color: rgba(214, 220, 232, 0.92);
+  font-size: 0.8rem;
+}
+
+.mapgen-debug-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.4rem;
+  margin-top: 0.1rem;
+}
+
+.mapgen-debug-action {
+  width: 100%;
+}
+
+.mapgen-debug-status {
+  margin: 0.1rem 0 0;
+  color: #d8f3dd;
+  font-size: 0.8rem;
+}
+
+.mapgen-debug-error {
+  margin: 0.1rem 0 0;
+  color: #ffd3c7;
+  font-size: 0.8rem;
 }
 
 .tile-hover-panel {
