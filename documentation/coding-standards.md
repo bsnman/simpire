@@ -35,6 +35,7 @@
 - Primary coordinate system: axial (`q`, `r`).
 - Key format for lookups: `${q},${r}`.
 - Avoid 2D array indexing as canonical storage for hex maps.
+- Model terrain features (forest/jungle/reeds) separately from economic resources (ore/fish/crops) so a tile can hold both layers at once.
 - For rectangular pointy-top fixtures, derive axial `q` from column via `q = col - floor(r / 2)`.
 
 ## Vue Standards

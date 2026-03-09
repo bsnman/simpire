@@ -36,6 +36,7 @@ type MapTile = {
   q: number;
   r: number;
   terrain: string;
+  terrainFeatureId?: string;
   resourceId?: string;
 };
 
@@ -72,7 +73,7 @@ Suggested pattern:
 
 - Own Pixi `Application` and render layers.
 - Convert domain coords to pixel positions through hex layout helpers.
-- Render map first, then resources, then units, then overlays/UI layer.
+- Render map first, then terrain features, then resources, then units, then overlays/UI layer.
 - Handle view-only controls such as zoom/pan (do not store these in Pinia game state).
 - Do not mutate game rules state; only reflect current state visually.
 

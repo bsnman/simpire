@@ -1,11 +1,13 @@
 import type { TileType } from '~/base/tiles';
 import type { ResourceType } from '~/base/resources';
+import type { TerrainFeatureType } from '~/base/terrainFeatures';
 import type { HexKey, HexLayout } from '~/types/hex';
 
 export type MapTile = {
   q: number;
   r: number;
   terrain: TileType;
+  terrainFeatureId?: TerrainFeatureType;
   resourceId?: ResourceType;
 };
 
