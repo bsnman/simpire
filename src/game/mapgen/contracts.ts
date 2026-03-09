@@ -30,6 +30,8 @@ export type MapGeneratorContext = {
   };
   random: SeededRandom;
   noiseAt: (q: number, r: number, salt?: string) => number;
+  createRandomStream: (name: string) => SeededRandom;
+  noiseAtWithSeed: (stream: string, q: number, r: number, salt?: string) => number;
   createRectCoords: () => HexCoord[];
 };
 

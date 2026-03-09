@@ -1,234 +1,218 @@
-import type { TileType } from '~/base/tiles';
-import { toHexKey } from '~/types/hex';
-
-import type {
-  MapGeneratorContext,
-  MapGeneratorDefinition,
-  ValidationResult,
+﻿import {
+  type MapGeneratorDefinition,
+  type ValidationResult,
+  type MapGeneratorContext,
 } from '~/game/mapgen/contracts';
-import { axialDistance, deriveSeaTerrains, percentileThreshold } from '~/game/mapgen/helpers';
+import { clamp } from '~/game/mapgen/helpers';
+import { runGeneratorPipeline } from '~/game/mapgen/pipeline/run';
 
 export const CONTINENTS_GENERATOR_ID = 'continents';
 
 export type ContinentsParams = {
-  seaLevelPercent: number;
-  continentCount: number;
+  landRatio: number;
+  continentCountTarget: number;
+  tectonicStrength: number;
+  coastlineRoughness: number;
+  mountainIntensity: number;
+};
+
+type LegacyContinentsParams = {
+  seaLevelPercent?: number;
+  continentCount?: number;
+};
+
+const DEFAULT_PARAMS: ContinentsParams = {
+  landRatio: 0.32,
+  continentCountTarget: 2,
+  tectonicStrength: 0.62,
+  coastlineRoughness: 0.58,
+  mountainIntensity: 0.58,
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+const readFiniteNumber = (source: Record<string, unknown>, key: string): number | undefined => {
+  const value = source[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+};
+
+const normalizeLandRatio = (record: Record<string, unknown>): number | undefined => {
+  const explicitLandRatio = readFiniteNumber(record, 'landRatio');
+
+  if (typeof explicitLandRatio === 'number') {
+    return explicitLandRatio;
+  }
+
+  const seaLevelPercent = readFiniteNumber(record as LegacyContinentsParams, 'seaLevelPercent');
+
+  if (typeof seaLevelPercent === 'number') {
+    return 1 - seaLevelPercent / 100;
+  }
+
+  return undefined;
+};
+
+const normalizeContinentCountTarget = (record: Record<string, unknown>): number | undefined => {
+  const explicit = readFiniteNumber(record, 'continentCountTarget');
+
+  if (typeof explicit === 'number') {
+    return explicit;
+  }
+
+  return readFiniteNumber(record as LegacyContinentsParams, 'continentCount');
+};
+
 const validateContinentsParams = (params: unknown): ValidationResult<ContinentsParams> => {
   if (!isRecord(params)) {
     return {
       ok: false,
-      error: 'Params must be an object with seaLevelPercent and continentCount.',
+      error:
+        'Params must be an object with landRatio, continentCountTarget, tectonicStrength, coastlineRoughness, and mountainIntensity.',
     };
   }
 
-  const seaLevelPercent = params.seaLevelPercent;
-  const continentCount = params.continentCount;
+  const landRatio = normalizeLandRatio(params) ?? DEFAULT_PARAMS.landRatio;
 
-  if (typeof seaLevelPercent !== 'number' || !Number.isFinite(seaLevelPercent)) {
+  if (landRatio < 0 || landRatio > 1) {
     return {
       ok: false,
-      error: 'seaLevelPercent must be a finite number.',
+      error: 'landRatio must be in the range 0..1 (or provide seaLevelPercent in 0..100).',
     };
   }
 
-  if (seaLevelPercent < 0 || seaLevelPercent > 100) {
+  const continentCountTarget =
+    normalizeContinentCountTarget(params) ?? DEFAULT_PARAMS.continentCountTarget;
+
+  if (!Number.isInteger(continentCountTarget) || continentCountTarget <= 0) {
     return {
       ok: false,
-      error: 'seaLevelPercent must be in the range 0..100.',
+      error: 'continentCountTarget must be a positive integer.',
     };
   }
 
-  if (
-    typeof continentCount !== 'number' ||
-    !Number.isInteger(continentCount) ||
-    continentCount <= 0
-  ) {
+  const tectonicStrength =
+    readFiniteNumber(params, 'tectonicStrength') ?? DEFAULT_PARAMS.tectonicStrength;
+
+  if (tectonicStrength < 0 || tectonicStrength > 1) {
     return {
       ok: false,
-      error: 'continentCount must be a positive integer.',
+      error: 'tectonicStrength must be in the range 0..1.',
+    };
+  }
+
+  const coastlineRoughness =
+    readFiniteNumber(params, 'coastlineRoughness') ?? DEFAULT_PARAMS.coastlineRoughness;
+
+  if (coastlineRoughness < 0 || coastlineRoughness > 1) {
+    return {
+      ok: false,
+      error: 'coastlineRoughness must be in the range 0..1.',
+    };
+  }
+
+  const mountainIntensity =
+    readFiniteNumber(params, 'mountainIntensity') ?? DEFAULT_PARAMS.mountainIntensity;
+
+  if (mountainIntensity < 0 || mountainIntensity > 1) {
+    return {
+      ok: false,
+      error: 'mountainIntensity must be in the range 0..1.',
     };
   }
 
   return {
     ok: true,
     value: {
-      seaLevelPercent,
-      continentCount,
+      landRatio,
+      continentCountTarget,
+      tectonicStrength,
+      coastlineRoughness,
+      mountainIntensity,
     },
   };
 };
 
-const selectContinentCenters = (
-  context: MapGeneratorContext,
-  targetCount: number,
-): { q: number; r: number }[] => {
-  const coords = context.createRectCoords();
-  const centers: { q: number; r: number }[] = [];
+const buildContinentsPipelineConfig = (context: MapGeneratorContext, params: ContinentsParams) => {
+  const mapArea = context.width * context.height;
+  const majorMasses = Math.max(1, params.continentCountTarget);
+  const poissonMinDistance = clamp(
+    Math.sqrt(mapArea / Math.max(4, majorMasses * 3.8)) * 0.92,
+    2.4,
+    Math.max(context.width, context.height),
+  );
 
-  if (!coords.length || targetCount <= 0) {
-    return centers;
-  }
-
-  centers.push(context.random.pick(coords));
-
-  while (centers.length < targetCount) {
-    const fallbackCoord = coords[0];
-
-    if (!fallbackCoord) {
-      throw new Error('Cannot select continent centers from an empty coordinate list.');
-    }
-
-    let candidate = fallbackCoord;
-    let bestScore = Number.NEGATIVE_INFINITY;
-
-    for (const coord of coords) {
-      let nearestDistance = Number.POSITIVE_INFINITY;
-
-      for (const center of centers) {
-        nearestDistance = Math.min(nearestDistance, axialDistance(coord, center));
-      }
-
-      // Slight jitter avoids hard symmetry and keeps deterministic output.
-      const score = nearestDistance + context.random.next() * 0.35;
-
-      if (score > bestScore) {
-        bestScore = score;
-        candidate = coord;
-      }
-    }
-
-    centers.push(candidate);
-  }
-
-  return centers;
-};
-
-const terrainForLand = (
-  context: MapGeneratorContext,
-  q: number,
-  r: number,
-  normalizedElevation: number,
-): TileType => {
-  const detailNoise = context.noiseAt(q, r, 'continents-terrain');
-  const elevation = normalizedElevation * 0.82 + detailNoise * 0.18;
-
-  if (elevation > 0.9) {
-    return 'mountain';
-  }
-
-  if (elevation > 0.72) {
-    return 'hill';
-  }
-
-  if (elevation > 0.46) {
-    return 'plains';
-  }
-
-  return 'grassland';
+  return {
+    scriptId: CONTINENTS_GENERATOR_ID,
+    landRatio: params.landRatio,
+    poissonMinDistance,
+    poissonAttempts: 26,
+    poissonMaxSeeds: Math.max(majorMasses * 10, 24),
+    primaryRegionTarget: majorMasses,
+    largeMassBias: 0.84,
+    fragmentation: 0.12 + params.coastlineRoughness * 0.16,
+    chainTendency: 0.34,
+    edgeOceanBias: 0.2,
+    tectonicStrength: params.tectonicStrength,
+    coastlineRoughness: params.coastlineRoughness,
+    mountainIntensity: params.mountainIntensity,
+    shelfWidth: 2,
+  };
 };
 
 export const continentsMapGenerator: MapGeneratorDefinition<ContinentsParams> = {
   id: CONTINENTS_GENERATOR_ID,
   displayName: 'Continents',
-  description: 'Large connected landmasses with clear coastlines.',
+  description: 'Large connected landmasses shaped by region macro structure and tectonics.',
   parameterDefinitions: [
     {
-      key: 'seaLevelPercent',
-      label: 'Sea Level (%)',
-      description: 'Higher values increase ocean coverage.',
-      defaultValue: 70,
-      min: 0,
-      max: 100,
-      step: 1,
+      key: 'landRatio',
+      label: 'Land Ratio',
+      description: 'Total percentage of map that should be land.',
+      defaultValue: DEFAULT_PARAMS.landRatio,
+      min: 0.15,
+      max: 0.55,
+      step: 0.01,
     },
     {
-      key: 'continentCount',
-      label: 'Continent Count',
-      description: 'Number of major landmasses to seed.',
-      defaultValue: 2,
+      key: 'continentCountTarget',
+      label: 'Continent Target',
+      description: 'Approximate number of major continental masses.',
+      defaultValue: DEFAULT_PARAMS.continentCountTarget,
       min: 1,
-      max: 12,
+      max: 10,
       step: 1,
       integer: true,
     },
+    {
+      key: 'tectonicStrength',
+      label: 'Tectonic Strength',
+      description: 'Controls how strongly boundary uplift/depression shapes elevation.',
+      defaultValue: DEFAULT_PARAMS.tectonicStrength,
+      min: 0,
+      max: 1,
+      step: 0.01,
+    },
+    {
+      key: 'coastlineRoughness',
+      label: 'Coastline Roughness',
+      description: 'Higher values create more broken coastlines and shore variance.',
+      defaultValue: DEFAULT_PARAMS.coastlineRoughness,
+      min: 0,
+      max: 1,
+      step: 0.01,
+    },
+    {
+      key: 'mountainIntensity',
+      label: 'Mountain Intensity',
+      description: 'Adjusts mountain/hill prevalence in elevated regions.',
+      defaultValue: DEFAULT_PARAMS.mountainIntensity,
+      min: 0,
+      max: 1,
+      step: 0.01,
+    },
   ],
   validateParams: validateContinentsParams,
-  generateTiles: (context, params) => {
-    const coords = context.createRectCoords();
-
-    if (!coords.length) {
-      return [];
-    }
-
-    const continentCount = Math.min(coords.length, params.continentCount);
-    const centers = selectContinentCenters(context, continentCount);
-    const influenceRadius = Math.max(2, Math.sqrt(coords.length / continentCount) * 0.9);
-
-    const scores = coords.map((coord) => {
-      let centerInfluence = 0;
-
-      for (const center of centers) {
-        const distance = axialDistance(coord, center);
-        const influence = Math.exp(
-          -(distance * distance) / (2 * influenceRadius * influenceRadius),
-        );
-        centerInfluence = Math.max(centerInfluence, influence);
-      }
-
-      const coastalNoise = context.noiseAt(coord.q, coord.r, 'continents-coast');
-      const macroNoise = context.noiseAt(coord.q, coord.r, 'continents-macro');
-
-      return centerInfluence * 0.76 + coastalNoise * 0.18 + macroNoise * 0.06;
-    });
-
-    const seaThreshold = percentileThreshold(scores, params.seaLevelPercent / 100);
-
-    const isLandByKey = new Set<string>();
-
-    for (let index = 0; index < coords.length; index += 1) {
-      const coord = coords[index];
-
-      if (!coord) {
-        continue;
-      }
-
-      const score = scores[index] ?? 0;
-
-      if (score > seaThreshold) {
-        isLandByKey.add(toHexKey(coord.q, coord.r));
-      }
-    }
-
-    const seaTerrainsByKey = deriveSeaTerrains(
-      coords,
-      (coord) => isLandByKey.has(toHexKey(coord.q, coord.r)),
-      context.noiseAt,
-      'continents-sea',
-    );
-
-    return coords.map((coord, index) => {
-      const score = scores[index] ?? 0;
-
-      if (score <= seaThreshold) {
-        return {
-          q: coord.q,
-          r: coord.r,
-          terrain: seaTerrainsByKey.get(toHexKey(coord.q, coord.r)) ?? 'ocean',
-        };
-      }
-
-      const normalizedElevation = (score - seaThreshold) / Math.max(1e-6, 1 - seaThreshold);
-
-      return {
-        q: coord.q,
-        r: coord.r,
-        terrain: terrainForLand(context, coord.q, coord.r, normalizedElevation),
-      };
-    });
-  },
+  generateTiles: (context, params) =>
+    runGeneratorPipeline(context, buildContinentsPipelineConfig(context, params)).tiles,
 };

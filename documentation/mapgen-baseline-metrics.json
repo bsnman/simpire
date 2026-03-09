@@ -1,0 +1,92 @@
+{
+  "generatedAt": "2026-03-09T03:17:07.311Z",
+  "sampleCount": 12,
+  "reports": [
+    {
+      "scenario": {
+        "algorithmId": "continents",
+        "width": 44,
+        "height": 30,
+        "sampleCount": 12,
+        "seedPrefix": "baseline-continents",
+        "params": {
+          "landRatio": 0.33,
+          "continentCountTarget": 3,
+          "tectonicStrength": 0.62,
+          "coastlineRoughness": 0.57,
+          "mountainIntensity": 0.58
+        }
+      },
+      "aggregate": {
+        "landRatio": {
+          "average": 0.33030303030303027,
+          "minimum": 0.3303030303030303,
+          "maximum": 0.3303030303030303
+        },
+        "landmassCount": {
+          "average": 1.75,
+          "minimum": 1,
+          "maximum": 4
+        },
+        "largestLandmassShare": {
+          "average": 0.9088302752293577,
+          "minimum": 0.6261467889908257,
+          "maximum": 1
+        },
+        "coastlineComplexity": {
+          "average": 0.5282874617737003,
+          "minimum": 0.42201834862385323,
+          "maximum": 0.7064220183486238
+        },
+        "directionalityScore": {
+          "average": 0.026819548264775315,
+          "minimum": 0,
+          "maximum": 0.04273504273504275
+        }
+      }
+    },
+    {
+      "scenario": {
+        "algorithmId": "archipelago",
+        "width": 44,
+        "height": 30,
+        "sampleCount": 12,
+        "seedPrefix": "baseline-archipelago",
+        "params": {
+          "landRatio": 0.24,
+          "islandSizeBias": 0.3,
+          "chainTendency": 0.7,
+          "shelfWidth": 2,
+          "tectonicStrength": 0.52
+        }
+      },
+      "aggregate": {
+        "landRatio": {
+          "average": 0.2401515151515152,
+          "minimum": 0.24015151515151514,
+          "maximum": 0.24015151515151514
+        },
+        "landmassCount": {
+          "average": 5.333333333333333,
+          "minimum": 1,
+          "maximum": 8
+        },
+        "largestLandmassShare": {
+          "average": 0.7941640378548896,
+          "minimum": 0.4794952681388013,
+          "maximum": 1
+        },
+        "coastlineComplexity": {
+          "average": 1.1548370136698212,
+          "minimum": 0.9337539432176656,
+          "maximum": 1.3943217665615142
+        },
+        "directionalityScore": {
+          "average": 0.03996884612996421,
+          "minimum": 0.0228310502283105,
+          "maximum": 0.06214689265536727
+        }
+      }
+    }
+  ]
+}

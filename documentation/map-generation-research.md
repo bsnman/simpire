@@ -40,34 +40,41 @@ A strategy game map is not only visual terrain. Start fairness and resource dist
 Follow this order for future implementation work:
 
 1. Seeded RNG streams
+
 - Derive named sub-seeds from `seedHash` (`macro`, `elevation`, `climate`, `rivers`, `balance`).
 - Keep deterministic ordering stable.
 
 2. Macro land/ocean mask
+
 - Generate Poisson seeds over map space.
 - Build Voronoi regions and classify each as oceanic or continental with target land ratio controls.
 - For `archipelago`, increase oceanic share and split continental regions probabilistically.
 
 3. Tectonic-style elevation pass
+
 - Assign pseudo-plate motion vectors per macro region.
 - Raise elevation along convergent boundaries; lower at divergent boundaries.
 - Clamp to biome-ready elevation bands (deep water, shallow water, plains, hills, mountains).
 
 4. Detail pass (artifact-safe)
+
 - Apply low-frequency OpenSimplex2/2S fields for coastline/elevation variation.
 - Add domain warping to break straight or repetitive bands.
 - Combine multiple rotated/octave fields instead of one axis-aligned field.
 
 5. Climate and hydrology
+
 - Compute prevailing wind + rain shadow approximation for moisture.
 - Route rivers downslope to coasts/lakes.
 - Optional lightweight hydraulic erosion to reduce geometric edges.
 
 6. Biomes and resources
+
 - Assign biome from elevation + temperature + moisture.
 - Run resource placement constrained by biome and gameplay caps.
 
 7. Fairness post-process
+
 - Score start locations for early-yield parity and spacing.
 - Re-roll local resources near weak starts within deterministic limits.
 
