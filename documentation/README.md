@@ -8,6 +8,8 @@ Purpose: this folder is the canonical context for implementation work in this re
 2. `documentation/technical-guidance.md`
 3. `documentation/coding-standards.md`
 4. `documentation/ui-style-guide.md` (required for UI/UX styling changes)
+5. `documentation/map-generation-research.md` (required before major map generator algorithm changes)
+6. `documentation/map-generation-implementation-plan.md` (implementation roadmap for mapgen rewrite)
 
 ## Usage Rules For Agents
 
@@ -15,5 +17,7 @@ Purpose: this folder is the canonical context for implementation work in this re
 - Read `technical-guidance.md` before adding or refactoring gameplay, map, renderer, or state code.
 - Read `coding-standards.md` before editing files to align style, naming, and quality expectations.
 - Read `ui-style-guide.md` before visual UI updates (menus, overlays, panels, controls).
+- Read `map-generation-research.md` before implementing or refactoring macro terrain/map-generation algorithms.
+- Read `map-generation-implementation-plan.md` before starting the staged map generation rewrite.
 - Use root imports for internal app modules with `/...` only. Do not use `@/...` or `../` parent-relative imports.
 - If a task changes architecture, conventions, or agreed patterns, update the relevant file in this folder and `AGENTS.md`.
