@@ -57,6 +57,7 @@ const { currentMap, lastGenerationRequest } = storeToRefs(mapStore);
 const { isEnabled: isMapgenDebugEnabled, includeFullMapData } = storeToRefs(mapgenDebugStore);
 const hoveredMapTile = ref<MapTile | null>(null);
 const isLeftDragPanning = ref(false);
+const cameraTiltDegrees = ref(renderer.getTiltDegrees());
 const mapgenDebugStatus = ref('');
 const mapgenDebugError = ref('');
 
@@ -229,6 +230,7 @@ const onCanvasWheel = (event: CanvasWheelEvent) => {
 
   const rect = canvasElement.getBoundingClientRect();
   renderer.zoomByWheel(event.deltaY, event.clientX - rect.left, event.clientY - rect.top);
+  cameraTiltDegrees.value = renderer.getTiltDegrees();
 };
 
 const onCanvasMouseMove = (event: CanvasMouseEvent) => {
@@ -354,6 +356,7 @@ onMounted(async () => {
   }
 
   await renderer.init(canvasElement);
+  cameraTiltDegrees.value = renderer.getTiltDegrees();
   renderer.setHoveredTileChangeHandler((nextHoveredTile) => {
     hoveredMapTile.value = nextHoveredTile?.tile ?? null;
   });
@@ -431,6 +434,7 @@ onUnmounted(() => {
           Directionality: {{ mapgenMetrics.directionalityScore.toFixed(4) }} (axis
           {{ mapgenMetrics.dominantAxis }})
         </p>
+        <p class="mapgen-debug-row">Camera Tilt: {{ cameraTiltDegrees.toFixed(1) }} deg</p>
         <p class="mapgen-debug-row">Digest: {{ mapgenDigest }}</p>
         <p class="mapgen-debug-row mapgen-debug-row-spaced">Params</p>
         <pre class="mapgen-debug-json">{{ mapgenParamsJson }}</pre>

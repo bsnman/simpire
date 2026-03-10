@@ -1,4 +1,4 @@
-import { Group, Raycaster } from 'three';
+import { Group, Plane, Quaternion, Raycaster, Vector2, Vector3 } from 'three';
 
 import type { GameMap } from '~/types/map';
 import { MapLayer, type HoveredTile } from '~/game/render/layers/MapLayer';
@@ -9,6 +9,7 @@ import {
   normalizePanVector,
   POINTER_LOCK_PAN_SENSITIVITY,
 } from '~/game/render/cameraControls';
+import { getZoomTiltRadians } from '~/game/render/cameraTilt';
 import { createSceneSetup, type ThreeSceneSetup } from '~/game/render/three/sceneSetup';
 
 type ArrowKey = 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown';
@@ -17,11 +18,24 @@ export class GameRenderer {
   private readonly mapLayer = new MapLayer();
   private readonly raycaster = new Raycaster();
   private readonly viewport = new Group();
+  private readonly initialZoom = 0.62;
+  private readonly minZoom = 0.3;
+  private readonly maxZoom = 5;
+  private readonly tiltStartZoom = this.initialZoom;
+  private readonly tiltMaxZoom = 2.5;
+  private readonly maxTiltRadians = (42 * Math.PI) / 180;
+  private readonly zoomAnchorNdc = new Vector2();
+  private readonly zoomAnchorPlane = new Plane();
+  private readonly zoomAnchorPlaneNormal = new Vector3();
+  private readonly zoomAnchorPlanePoint = new Vector3();
+  private readonly zoomAnchorPlaneQuaternion = new Quaternion();
+  private readonly zoomAnchorWorldPoint = new Vector3();
+  private readonly zoomAnchorLocalPoint = new Vector3();
+  private readonly zoomAnchorProjectedPoint = new Vector3();
+  private readonly zoomAnchorRayDirection = new Vector3();
   private sceneSetup: ThreeSceneSetup | null = null;
   private initialized = false;
-  private zoom = 0.62;
-  private readonly minZoom = 0.3;
-  private readonly maxZoom = 2.5;
+  private zoom = this.initialZoom;
   private pointerLocked = false;
   private edgePointerPosition: { x: number; y: number } | null = null;
   private edgePointerViewportSize: { width: number; height: number } | null = null;
@@ -45,7 +59,7 @@ export class GameRenderer {
     this.sceneSetup = createSceneSetup(canvas);
     this.viewport.clear();
     this.viewport.position.set(0, 0, 0);
-    this.viewport.scale.set(this.zoom, this.zoom, 1);
+    this.applyZoomAndTilt(this.zoom);
     this.viewport.add(this.mapLayer.group);
     this.sceneSetup.scene.add(this.viewport);
 
@@ -86,8 +100,12 @@ export class GameRenderer {
     this.mapLayer.clearHoveredTile();
   }
 
+  getTiltDegrees(): number {
+    return (this.getTiltForZoom(this.zoom) * 180) / Math.PI;
+  }
+
   zoomByWheel(deltaY: number, screenX: number, screenY: number) {
-    if (!this.initialized) {
+    if (!this.initialized || !this.sceneSetup) {
       return;
     }
 
@@ -99,11 +117,13 @@ export class GameRenderer {
       return;
     }
 
-    const worldX = (screenX - this.viewport.position.x) / oldZoom;
-    const worldY = (screenY - this.viewport.position.y) / oldZoom;
+    const hasZoomAnchor = this.captureZoomAnchorLocalPoint(screenX, screenY);
+    this.applyZoomAndTilt(nextZoom);
 
-    this.viewport.scale.set(nextZoom, nextZoom, 1);
-    this.viewport.position.set(screenX - worldX * nextZoom, screenY - worldY * nextZoom, 0);
+    if (hasZoomAnchor) {
+      this.keepZoomAnchorAtScreenPoint(screenX, screenY);
+    }
+
     this.zoom = nextZoom;
   }
 
@@ -207,6 +227,85 @@ export class GameRenderer {
   private panByScreenDelta(deltaX: number, deltaY: number) {
     this.viewport.position.x += deltaX;
     this.viewport.position.y += deltaY;
+  }
+
+  private applyZoomAndTilt(zoom: number) {
+    this.viewport.scale.set(zoom, zoom, 1);
+    this.viewport.rotation.set(this.getTiltForZoom(zoom), 0, 0);
+  }
+
+  private getTiltForZoom(zoom: number): number {
+    return getZoomTiltRadians(zoom, {
+      minZoom: this.minZoom,
+      tiltStartZoom: this.tiltStartZoom,
+      maxZoom: this.tiltMaxZoom,
+      maxTiltRadians: this.maxTiltRadians,
+    });
+  }
+
+  private captureZoomAnchorLocalPoint(screenX: number, screenY: number): boolean {
+    if (!this.sceneSetup) {
+      return false;
+    }
+
+    const viewportSize = this.sceneSetup.getViewportSize();
+
+    if (viewportSize.width <= 0 || viewportSize.height <= 0) {
+      return false;
+    }
+
+    this.zoomAnchorNdc.set(
+      (screenX / viewportSize.width) * 2 - 1,
+      -(screenY / viewportSize.height) * 2 + 1,
+    );
+    this.raycaster.setFromCamera(this.zoomAnchorNdc, this.sceneSetup.camera);
+
+    this.viewport.updateMatrixWorld(true);
+    this.viewport.getWorldQuaternion(this.zoomAnchorPlaneQuaternion);
+    this.zoomAnchorPlaneNormal.set(0, 0, 1).applyQuaternion(this.zoomAnchorPlaneQuaternion);
+    this.viewport.getWorldPosition(this.zoomAnchorPlanePoint);
+    this.zoomAnchorPlane.setFromNormalAndCoplanarPoint(
+      this.zoomAnchorPlaneNormal,
+      this.zoomAnchorPlanePoint,
+    );
+
+    const denominator = this.zoomAnchorPlane.normal.dot(this.raycaster.ray.direction);
+
+    if (Math.abs(denominator) <= 1e-8) {
+      return false;
+    }
+
+    const signedDistanceToPlane = this.zoomAnchorPlane.distanceToPoint(this.raycaster.ray.origin);
+    const distanceAlongRay = -signedDistanceToPlane / denominator;
+
+    this.zoomAnchorRayDirection.copy(this.raycaster.ray.direction).multiplyScalar(distanceAlongRay);
+    this.zoomAnchorWorldPoint.copy(this.raycaster.ray.origin).add(this.zoomAnchorRayDirection);
+    this.zoomAnchorLocalPoint.copy(this.zoomAnchorWorldPoint);
+    this.viewport.worldToLocal(this.zoomAnchorLocalPoint);
+    return true;
+  }
+
+  private keepZoomAnchorAtScreenPoint(screenX: number, screenY: number) {
+    if (!this.sceneSetup) {
+      return;
+    }
+
+    const viewportSize = this.sceneSetup.getViewportSize();
+
+    if (viewportSize.width <= 0 || viewportSize.height <= 0) {
+      return;
+    }
+
+    this.viewport.updateMatrixWorld(true);
+    this.zoomAnchorWorldPoint.copy(this.zoomAnchorLocalPoint);
+    this.viewport.localToWorld(this.zoomAnchorWorldPoint);
+    this.zoomAnchorProjectedPoint.copy(this.zoomAnchorWorldPoint).project(this.sceneSetup.camera);
+
+    const projectedScreenX = (this.zoomAnchorProjectedPoint.x + 1) * 0.5 * viewportSize.width;
+    const projectedScreenY = (1 - this.zoomAnchorProjectedPoint.y) * 0.5 * viewportSize.height;
+
+    this.viewport.position.x += screenX - projectedScreenX;
+    this.viewport.position.y += screenY - projectedScreenY;
   }
 
   private readonly handleFrame = (timestamp: number) => {
