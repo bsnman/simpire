@@ -14,6 +14,65 @@ import {
 import { archipelagoDiagonalReproFixture } from '~/game/mapgen/fixtures/archipelagoDiagonalRepro';
 import type { MapTile } from '~/types/map';
 
+const archipelagoHillBalanceRepro = {
+  request: {
+    algorithmId: 'archipelago',
+    width: 70,
+    height: 70,
+    layout: 'pointy',
+    tileSize: 24,
+    origin: {
+      x: 80,
+      y: 80,
+    },
+    seedHash: 'archipelago-1773116097681',
+    mapId: 'game-1773116097681',
+    params: {
+      landRatio: 0.24,
+      islandSizeBias: 0.36,
+      chainTendency: 0.64,
+      shelfWidth: 2,
+      tectonicStrength: 0.52,
+    },
+  },
+} as const;
+
+const countLandTerrains = (tiles: readonly MapTile[]) => {
+  let grassland = 0;
+  let plains = 0;
+  let hill = 0;
+  let mountain = 0;
+
+  for (const tile of tiles) {
+    if (tile.terrain === 'grassland') {
+      grassland += 1;
+      continue;
+    }
+
+    if (tile.terrain === 'plains') {
+      plains += 1;
+      continue;
+    }
+
+    if (tile.terrain === 'hill') {
+      hill += 1;
+      continue;
+    }
+
+    if (tile.terrain === 'mountain') {
+      mountain += 1;
+    }
+  }
+
+  return {
+    grassland,
+    plains,
+    hill,
+    mountain,
+    landTileCount: grassland + plains + hill + mountain,
+  };
+};
+
 describe('mapgen repro fixtures', () => {
   it('replays archipelago diagonal repro payload with reduced linear land streak artifacts', () => {
     const firstMap = generateMap(archipelagoDiagonalReproFixture.request);
@@ -60,5 +119,20 @@ describe('mapgen repro fixtures', () => {
       expect(parsed.value.request).toEqual(archipelagoDiagonalReproFixture.request);
       expect(parsed.value.expectedMapDigest).toBe(archipelagoDiagonalReproFixture.mapDigest);
     }
+  });
+
+  it('keeps the archived archipelago repro seed from collapsing into hill-dominant land', () => {
+    const map = generateMap(archipelagoHillBalanceRepro.request);
+    const tiles: MapTile[] = map.tileKeys
+      .map((key) => map.tilesByKey[key])
+      .filter((tile): tile is MapTile => Boolean(tile));
+    const counts = countLandTerrains(tiles);
+    const lowlandShare = (counts.grassland + counts.plains) / Math.max(1, counts.landTileCount);
+    const hillShare = counts.hill / Math.max(1, counts.landTileCount);
+
+    expect(counts.landTileCount).toBeGreaterThan(0);
+    expect(lowlandShare).toBeGreaterThanOrEqual(0.45);
+    expect(hillShare).toBeLessThanOrEqual(0.35);
+    expect(counts.grassland).toBeGreaterThanOrEqual(counts.plains);
   });
 });

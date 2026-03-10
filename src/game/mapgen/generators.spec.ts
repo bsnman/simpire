@@ -22,6 +22,22 @@ const buildMetrics = (map: ReturnType<typeof generateMap>) => {
   return calculateMapQualityMetrics(grid, landMask);
 };
 
+const countTerrains = (map: ReturnType<typeof generateMap>) => {
+  const counts = new Map<MapTile['terrain'], number>();
+
+  for (const key of map.tileKeys) {
+    const tile = map.tilesByKey[key];
+
+    if (!tile) {
+      continue;
+    }
+
+    counts.set(tile.terrain, (counts.get(tile.terrain) ?? 0) + 1);
+  }
+
+  return counts;
+};
+
 const terrainDifferenceRatio = (
   left: ReturnType<typeof generateMap>,
   right: ReturnType<typeof generateMap>,
@@ -192,6 +208,76 @@ describe('map generators', () => {
       archipelagoShares.reduce((sum, value) => sum + value, 0) / archipelagoShares.length;
 
     expect(averageContinentsShare).toBeGreaterThan(averageArchipelagoShare + 0.12);
+  });
+
+  it('preserves lowland terrain presence across deterministic seed sweeps', () => {
+    const scenarios = [
+      {
+        algorithmId: CONTINENTS_GENERATOR_ID,
+        params: {
+          landRatio: 0.33,
+          continentCountTarget: 3,
+          tectonicStrength: 0.62,
+          coastlineRoughness: 0.57,
+          mountainIntensity: 0.58,
+        },
+      },
+      {
+        algorithmId: ARCHIPELAGO_GENERATOR_ID,
+        params: {
+          landRatio: 0.24,
+          islandSizeBias: 0.3,
+          chainTendency: 0.7,
+          shelfWidth: 2,
+          tectonicStrength: 0.52,
+        },
+      },
+    ] as const;
+
+    const sampleSeeds = Array.from({ length: 12 }, (_, index) => `terrain-profile-seed-${index}`);
+
+    for (const scenario of scenarios) {
+      let aggregateLand = 0;
+      let aggregateLowland = 0;
+      let aggregateMountain = 0;
+      let aggregateGrassland = 0;
+      let aggregatePlains = 0;
+
+      for (const seed of sampleSeeds) {
+        const map = generateMap({
+          algorithmId: scenario.algorithmId,
+          width: WIDTH,
+          height: HEIGHT,
+          seedHash: `${scenario.algorithmId}-${seed}`,
+          params: scenario.params,
+        });
+
+        const counts = countTerrains(map);
+        const grassland = counts.get('grassland') ?? 0;
+        const plains = counts.get('plains') ?? 0;
+        const hill = counts.get('hill') ?? 0;
+        const mountain = counts.get('mountain') ?? 0;
+        const land = grassland + plains + hill + mountain;
+        const lowland = grassland + plains;
+
+        expect(lowland).toBeGreaterThan(0);
+        expect(mountain).toBeGreaterThan(0);
+
+        aggregateLand += land;
+        aggregateLowland += lowland;
+        aggregateMountain += mountain;
+        aggregateGrassland += grassland;
+        aggregatePlains += plains;
+      }
+
+      const lowlandShare = aggregateLowland / aggregateLand;
+      const mountainShare = aggregateMountain / aggregateLand;
+      const grassToPlainsRatio = aggregateGrassland / Math.max(1, aggregatePlains);
+
+      expect(lowlandShare).toBeGreaterThan(0.15);
+      expect(mountainShare).toBeLessThan(0.45);
+      expect(grassToPlainsRatio).toBeGreaterThanOrEqual(0.9);
+    }
   });
 
   it('supports legacy parameter shapes for backward compatibility', () => {

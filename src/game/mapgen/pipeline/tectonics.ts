@@ -135,7 +135,7 @@ export const applyTectonicPass = (
 
     if (isLandAt(landMask, tileIndex)) {
       finalElevation[tileIndex] = clamp(
-        0.36 + normalized * 0.64 + boundaryBoost * 0.08 * strength,
+        0.08 + normalized * 0.7 + boundaryBoost * 0.14 * strength,
         0,
         1,
       );
