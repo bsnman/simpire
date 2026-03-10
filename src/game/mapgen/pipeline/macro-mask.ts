@@ -305,10 +305,7 @@ export const buildMacroMask = (
     const mustTakeRegion = chosenRegions < primaryRegionMinCount;
     const projectedLandCount = landTileCount + region.tileIndices.length;
 
-    if (
-      !mustTakeRegion &&
-      projectedLandCount > targetLandTiles * primaryRegionOvershootTolerance
-    ) {
+    if (!mustTakeRegion && projectedLandCount > targetLandTiles * primaryRegionOvershootTolerance) {
       continue;
     }
 

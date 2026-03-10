@@ -281,8 +281,7 @@ export const calculateLandCorridorMetrics = (
   }
 
   const dominantAxis = axisCounts.reduce(
-    (currentBest, value, axis) =>
-      value > (axisCounts[currentBest] ?? 0) ? axis : currentBest,
+    (currentBest, value, axis) => (value > (axisCounts[currentBest] ?? 0) ? axis : currentBest),
     0,
   ) as 0 | 1 | 2;
 

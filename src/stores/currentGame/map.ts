@@ -2,10 +2,7 @@ import { ref } from 'vue';
 import { defineStore } from 'pinia';
 
 import { canPlaceResourceOnTerrain, type ResourceType } from '~/base/resources';
-import {
-  canPlaceTerrainFeatureOnTerrain,
-  type TerrainFeatureType,
-} from '~/base/terrainFeatures';
+import { canPlaceTerrainFeatureOnTerrain, type TerrainFeatureType } from '~/base/terrainFeatures';
 import type { TileType } from '~/base/tiles';
 import type { GameMap } from '~/types/map';
 import { toHexKey } from '~/types/hex';
@@ -96,10 +93,7 @@ export const useCurrentGameMapStore = defineStore('currentGameMap', () => {
       return false;
     }
 
-    if (
-      terrainFeatureId &&
-      !canPlaceTerrainFeatureOnTerrain(terrainFeatureId, existing.terrain)
-    ) {
+    if (terrainFeatureId && !canPlaceTerrainFeatureOnTerrain(terrainFeatureId, existing.terrain)) {
       return false;
     }
 

@@ -77,7 +77,8 @@ const hoveredTileInfo = computed(() => {
     ? resources[hoveredMapTile.value.resourceId]
     : null;
   const baseProduction: ProductionValues = tileDefinition.resourceProduction ?? {};
-  const terrainFeatureProduction: ProductionValues = terrainFeatureDefinition?.bonusProduction ?? {};
+  const terrainFeatureProduction: ProductionValues =
+    terrainFeatureDefinition?.bonusProduction ?? {};
   const resourceProduction: ProductionValues = resourceDefinition?.bonusProduction ?? {};
 
   return {
@@ -426,11 +427,7 @@ onUnmounted(() => {
         <pre class="mapgen-debug-json">{{ mapgenParamsJson }}</pre>
 
         <label class="mapgen-debug-checkbox-row">
-          <input
-            type="checkbox"
-            :checked="includeFullMapData"
-            @change="setIncludeFullMapData"
-          />
+          <input type="checkbox" :checked="includeFullMapData" @change="setIncludeFullMapData" />
           Include full map tile data when copying payload
         </label>
 
@@ -502,8 +499,7 @@ onUnmounted(() => {
   min-height: 100%;
   background:
     radial-gradient(circle at 12% 12%, rgba(42, 92, 132, 0.24), transparent 48%),
-    radial-gradient(circle at 88% 86%, rgba(169, 124, 71, 0.2), transparent 46%),
-    #070c12;
+    radial-gradient(circle at 88% 86%, rgba(169, 124, 71, 0.2), transparent 46%), #070c12;
 }
 
 .game-canvas {

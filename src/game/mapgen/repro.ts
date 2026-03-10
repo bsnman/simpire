@@ -81,9 +81,7 @@ export const createMapDigest = (map: GameMap): string => {
       continue;
     }
 
-    parts.push(
-      `${key}|${tile.terrain}|${tile.terrainFeatureId ?? ''}|${tile.resourceId ?? ''}`,
-    );
+    parts.push(`${key}|${tile.terrain}|${tile.terrainFeatureId ?? ''}|${tile.resourceId ?? ''}`);
   }
 
   return `fnv1a:${fnv1a(parts.join(';')).toString(16).padStart(8, '0')}`;
@@ -232,7 +230,9 @@ const parsePayloadObject = (candidate: unknown): ValidationResult<MapgenReplayIn
       : undefined;
 
   const payload =
-    candidate.version === 1 && typeof candidate.capturedAt === 'string' && isRecord(candidate.metrics)
+    candidate.version === 1 &&
+    typeof candidate.capturedAt === 'string' &&
+    isRecord(candidate.metrics)
       ? (candidate as MapgenReproPayload)
       : undefined;
 

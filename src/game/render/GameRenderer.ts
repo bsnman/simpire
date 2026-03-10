@@ -182,7 +182,10 @@ export class GameRenderer {
   }
 
   private panByScreenDelta(deltaX: number, deltaY: number) {
-    this.app.stage.position.set(this.app.stage.position.x + deltaX, this.app.stage.position.y + deltaY);
+    this.app.stage.position.set(
+      this.app.stage.position.x + deltaX,
+      this.app.stage.position.y + deltaY,
+    );
   }
 
   private readonly handleTick = () => {
@@ -200,7 +203,10 @@ export class GameRenderer {
             this.edgePointerViewportSize.height,
           )
         : { x: 0, y: 0 };
-    const vector = normalizePanVector(edgeVector.x + keyboardVector.x, edgeVector.y + keyboardVector.y);
+    const vector = normalizePanVector(
+      edgeVector.x + keyboardVector.x,
+      edgeVector.y + keyboardVector.y,
+    );
 
     if (vector.x === 0 && vector.y === 0) {
       return;
