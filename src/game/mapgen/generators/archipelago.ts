@@ -1,4 +1,4 @@
-﻿import { clamp } from '~/game/mapgen/helpers';
+import { clamp } from '~/game/mapgen/helpers';
 import {
   type MapGeneratorContext,
   type MapGeneratorDefinition,
@@ -10,7 +10,9 @@ export const ARCHIPELAGO_GENERATOR_ID = 'archipelago';
 
 export type ArchipelagoParams = {
   landRatio: number;
-  islandSizeBias: number;
+  landmassSize: number;
+  landmassCountMin: number;
+  landmassCountMax: number;
   chainTendency: number;
   shelfWidth: number;
   tectonicStrength: number;
@@ -19,11 +21,17 @@ export type ArchipelagoParams = {
 type LegacyArchipelagoParams = {
   seaLevelPercent?: number;
   islandDensity?: number;
+  islandSizeBias?: number;
+  landmassCount?: number;
+  landmassCountMin?: number;
+  landmassCountMax?: number;
 };
 
 const DEFAULT_PARAMS: ArchipelagoParams = {
   landRatio: 0.24,
-  islandSizeBias: 0.36,
+  landmassSize: 0.36,
+  landmassCountMin: 11,
+  landmassCountMax: 11,
   chainTendency: 0.64,
   shelfWidth: 2,
   tectonicStrength: 0.52,
@@ -53,11 +61,17 @@ const normalizeLandRatio = (record: Record<string, unknown>): number | undefined
   return undefined;
 };
 
-const normalizeIslandSizeBias = (record: Record<string, unknown>): number | undefined => {
-  const explicitSizeBias = readFiniteNumber(record, 'islandSizeBias');
+const normalizeLandmassSize = (record: Record<string, unknown>): number | undefined => {
+  const explicitSize = readFiniteNumber(record, 'landmassSize');
 
-  if (typeof explicitSizeBias === 'number') {
-    return explicitSizeBias;
+  if (typeof explicitSize === 'number') {
+    return explicitSize;
+  }
+
+  const legacySizeBias = readFiniteNumber(record as LegacyArchipelagoParams, 'islandSizeBias');
+
+  if (typeof legacySizeBias === 'number') {
+    return legacySizeBias;
   }
 
   const legacyDensity = readFiniteNumber(record as LegacyArchipelagoParams, 'islandDensity');
@@ -69,12 +83,100 @@ const normalizeIslandSizeBias = (record: Record<string, unknown>): number | unde
   return undefined;
 };
 
+const normalizeLandmassCountRange = (
+  record: Record<string, unknown>,
+  fallbackLandmassSize: number,
+): { min: number; max: number } | undefined => {
+  const explicitTarget = readFiniteNumber(record as LegacyArchipelagoParams, 'landmassCount');
+  const explicitMin = readFiniteNumber(record as LegacyArchipelagoParams, 'landmassCountMin');
+  const explicitMax = readFiniteNumber(record as LegacyArchipelagoParams, 'landmassCountMax');
+
+  if (typeof explicitTarget === 'number') {
+    const rounded = Math.round(explicitTarget);
+    return { min: rounded, max: rounded };
+  }
+
+  if (typeof explicitMin === 'number' || typeof explicitMax === 'number') {
+    const min = Math.round(explicitMin ?? explicitMax ?? Number.NaN);
+    const max = Math.round(explicitMax ?? explicitMin ?? Number.NaN);
+    return {
+      min,
+      max,
+    };
+  }
+
+  const legacySizeBias = readFiniteNumber(record as LegacyArchipelagoParams, 'islandSizeBias');
+
+  if (typeof legacySizeBias === 'number') {
+    const legacyDerivedTarget = Math.max(4, Math.round(6 + (1 - legacySizeBias) * 8));
+    return {
+      min: legacyDerivedTarget,
+      max: legacyDerivedTarget,
+    };
+  }
+
+  const legacyDensity = readFiniteNumber(record as LegacyArchipelagoParams, 'islandDensity');
+
+  if (typeof legacyDensity === 'number') {
+    const densityAdjustedTarget = Math.max(
+      4,
+      Math.round(5 + clamp(legacyDensity, 0, 1) * 10 + (1 - fallbackLandmassSize) * 3),
+    );
+    return {
+      min: densityAdjustedTarget,
+      max: densityAdjustedTarget,
+    };
+  }
+
+  return undefined;
+};
+
+const validateLandmassCountRange = (range: {
+  min: number;
+  max: number;
+}): ValidationResult<{ min: number; max: number }> => {
+  if (!Number.isInteger(range.min) || range.min <= 0) {
+    return {
+      ok: false,
+      error: 'landmassCount/landmassCountMin must be a positive integer.',
+    };
+  }
+
+  if (!Number.isInteger(range.max) || range.max <= 0) {
+    return {
+      ok: false,
+      error: 'landmassCount/landmassCountMax must be a positive integer.',
+    };
+  }
+
+  if (range.max < range.min) {
+    return {
+      ok: false,
+      error: 'landmassCountMax must be greater than or equal to landmassCountMin.',
+    };
+  }
+
+  return {
+    ok: true,
+    value: range,
+  };
+};
+
+const computeEffectiveLandRatio = (landRatio: number, landmassSize: number): number => {
+  if (landmassSize >= 0.98) {
+    return 1;
+  }
+
+  const sizeMultiplier = clamp(1 + (landmassSize - DEFAULT_PARAMS.landmassSize) * 0.9, 0.5, 1.5);
+  return clamp(landRatio * sizeMultiplier, 0, 1);
+};
+
 const validateArchipelagoParams = (params: unknown): ValidationResult<ArchipelagoParams> => {
   if (!isRecord(params)) {
     return {
       ok: false,
       error:
-        'Params must be an object with landRatio, islandSizeBias, chainTendency, shelfWidth, and tectonicStrength.',
+        'Params must be an object with landRatio, landmassCount (or landmassCountMin/Max), landmassSize, chainTendency, shelfWidth, and tectonicStrength.',
     };
   }
 
@@ -87,13 +189,25 @@ const validateArchipelagoParams = (params: unknown): ValidationResult<Archipelag
     };
   }
 
-  const islandSizeBias = normalizeIslandSizeBias(params) ?? DEFAULT_PARAMS.islandSizeBias;
+  const landmassSize = normalizeLandmassSize(params) ?? DEFAULT_PARAMS.landmassSize;
 
-  if (islandSizeBias < 0 || islandSizeBias > 1) {
+  if (landmassSize < 0 || landmassSize > 1) {
     return {
       ok: false,
-      error: 'islandSizeBias must be in the range 0..1.',
+      error: 'landmassSize must be in the range 0..1.',
     };
+  }
+
+  const landmassCountRange =
+    normalizeLandmassCountRange(params, landmassSize) ??
+    ({
+      min: DEFAULT_PARAMS.landmassCountMin,
+      max: DEFAULT_PARAMS.landmassCountMax,
+    } as const);
+  const landmassCountRangeResult = validateLandmassCountRange(landmassCountRange);
+
+  if (!landmassCountRangeResult.ok) {
+    return landmassCountRangeResult;
   }
 
   const chainTendency = readFiniteNumber(params, 'chainTendency') ?? DEFAULT_PARAMS.chainTendency;
@@ -127,8 +241,10 @@ const validateArchipelagoParams = (params: unknown): ValidationResult<Archipelag
   return {
     ok: true,
     value: {
-      landRatio,
-      islandSizeBias,
+      landRatio: computeEffectiveLandRatio(landRatio, landmassSize),
+      landmassSize,
+      landmassCountMin: landmassCountRangeResult.value.min,
+      landmassCountMax: landmassCountRangeResult.value.max,
       chainTendency,
       shelfWidth,
       tectonicStrength,
@@ -141,11 +257,12 @@ const buildArchipelagoPipelineConfig = (
   params: ArchipelagoParams,
 ) => {
   const mapArea = context.width * context.height;
-  const islandScale = clamp(params.islandSizeBias, 0, 1);
-  const regionFactor = 10 + (1 - islandScale) * 26;
+  const clampedLandmassSize = clamp(params.landmassSize, 0, 1);
+  const averageLandmassCount = (params.landmassCountMin + params.landmassCountMax) / 2;
   const poissonMinDistance = clamp(
-    Math.sqrt(mapArea / regionFactor) * 0.78,
-    2,
+    Math.sqrt(mapArea / Math.max(8, averageLandmassCount * 2.6)) *
+      (0.58 + clampedLandmassSize * 0.48),
+    1.8,
     Math.max(context.width, context.height),
   );
 
@@ -154,12 +271,14 @@ const buildArchipelagoPipelineConfig = (
     landRatio: params.landRatio,
     poissonMinDistance,
     poissonAttempts: 30,
-    poissonMaxSeeds: Math.max(30, Math.round(regionFactor * 2.2)),
-    primaryRegionTarget: Math.max(4, Math.round(6 + (1 - islandScale) * 8)),
-    largeMassBias: 0.28 + islandScale * 0.2,
-    fragmentation: 0.44 + (1 - islandScale) * 0.32,
+    poissonMaxSeeds: Math.max(params.landmassCountMax * 4, 30),
+    primaryRegionTarget: Math.round(averageLandmassCount),
+    primaryRegionTargetMin: params.landmassCountMin,
+    primaryRegionTargetMax: params.landmassCountMax,
+    largeMassBias: clamp(0.2 + clampedLandmassSize * 0.35, 0, 1),
+    fragmentation: clamp(0.58 - clampedLandmassSize * 0.34, 0.08, 0.84),
     chainTendency: params.chainTendency,
-    edgeOceanBias: 0.36,
+    edgeOceanBias: clamp(0.42 - clampedLandmassSize * 0.16, 0, 1),
     tectonicStrength: params.tectonicStrength,
     coastlineRoughness: 0.74,
     mountainIntensity: clamp(0.42 + params.tectonicStrength * 0.25, 0, 1),
@@ -173,19 +292,49 @@ export const archipelagoMapGenerator: MapGeneratorDefinition<ArchipelagoParams> 
   description: 'Fragmented island groups with chain-biased macro shaping.',
   parameterDefinitions: [
     {
-      key: 'landRatio',
-      label: 'Land Ratio',
-      description: 'Total percentage of map that should be land.',
-      defaultValue: DEFAULT_PARAMS.landRatio,
-      min: 0.1,
-      max: 0.45,
+      key: 'landmassCount',
+      label: 'Landmass Count',
+      description: 'Exact number of islands/landmasses to target.',
+      defaultValue: DEFAULT_PARAMS.landmassCountMin,
+      min: 1,
+      max: 40,
+      step: 1,
+      integer: true,
+    },
+    {
+      key: 'landmassCountMin',
+      label: 'Landmass Min',
+      description: 'Lower bound for deterministic random landmass count.',
+      defaultValue: DEFAULT_PARAMS.landmassCountMin,
+      min: 1,
+      max: 40,
+      step: 1,
+      integer: true,
+    },
+    {
+      key: 'landmassCountMax',
+      label: 'Landmass Max',
+      description: 'Upper bound for deterministic random landmass count.',
+      defaultValue: DEFAULT_PARAMS.landmassCountMax,
+      min: 1,
+      max: 40,
+      step: 1,
+      integer: true,
+    },
+    {
+      key: 'landmassSize',
+      label: 'Landmass Size',
+      description: 'Larger values create bigger islands and can remove seas.',
+      defaultValue: DEFAULT_PARAMS.landmassSize,
+      min: 0,
+      max: 1,
       step: 0.01,
     },
     {
-      key: 'islandSizeBias',
-      label: 'Island Size Bias',
-      description: 'Lower values favor smaller islands and denser fragmentation.',
-      defaultValue: DEFAULT_PARAMS.islandSizeBias,
+      key: 'landRatio',
+      label: 'Base Land Ratio',
+      description: 'Baseline map land ratio before landmass-size scaling.',
+      defaultValue: DEFAULT_PARAMS.landRatio,
       min: 0,
       max: 1,
       step: 0.01,

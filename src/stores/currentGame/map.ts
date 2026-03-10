@@ -21,7 +21,9 @@ const DEFAULT_MAP_REQUEST: MapGenerationRequest = {
   seedHash: 'debug-map-001',
   params: {
     landRatio: 0.32,
-    continentCountTarget: 2,
+    landmassCountMin: 2,
+    landmassCountMax: 2,
+    landmassSize: 0.5,
     tectonicStrength: 0.62,
     coastlineRoughness: 0.58,
     mountainIntensity: 0.58,

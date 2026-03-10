@@ -18,6 +18,8 @@ export type GeneratorPipelineConfig = {
   poissonAttempts?: number;
   poissonMaxSeeds?: number;
   primaryRegionTarget: number;
+  primaryRegionTargetMin?: number;
+  primaryRegionTargetMax?: number;
   largeMassBias: number;
   fragmentation: number;
   chainTendency: number;
@@ -37,6 +39,24 @@ export type GeneratorPipelineResult = {
     targetLandRatio: number;
     actualLandRatio: number;
   };
+};
+
+const resolvePrimaryRegionTarget = (
+  config: Pick<
+    GeneratorPipelineConfig,
+    'primaryRegionTarget' | 'primaryRegionTargetMin' | 'primaryRegionTargetMax'
+  >,
+  random: { int: (min: number, max: number) => number },
+): number => {
+  const fallback = Math.max(1, Math.round(config.primaryRegionTarget));
+  const min = Math.max(1, Math.round(config.primaryRegionTargetMin ?? fallback));
+  const max = Math.max(min, Math.round(config.primaryRegionTargetMax ?? min));
+
+  if (min === max) {
+    return min;
+  }
+
+  return random.int(min, max + 1);
 };
 
 const ensureMinimumSeedCoverage = (
@@ -90,6 +110,7 @@ export const runGeneratorPipeline = (
   const subseeds = createSubseedStreams(context);
   const macroRandom = subseeds.random('macro');
   const clampedLandRatio = clamp(config.landRatio, 0, 1);
+  const primaryRegionTarget = resolvePrimaryRegionTarget(config, macroRandom);
   const minDistance = Math.max(2, config.poissonMinDistance);
   const initialSeeds = generatePoissonSeeds({
     width: context.width,
@@ -100,7 +121,7 @@ export const runGeneratorPipeline = (
     random: macroRandom,
   });
 
-  const minimumSeedCount = Math.max(3, Math.min(grid.tiles.length, config.primaryRegionTarget + 2));
+  const minimumSeedCount = Math.max(3, Math.min(grid.tiles.length, primaryRegionTarget + 2));
   const seeds = ensureMinimumSeedCoverage(
     initialSeeds,
     context.width,
@@ -112,7 +133,7 @@ export const runGeneratorPipeline = (
 
   const macroMask = buildMacroMask(grid, voronoi, {
     landRatio: clampedLandRatio,
-    primaryRegionTarget: config.primaryRegionTarget,
+    primaryRegionTarget,
     largeMassBias: config.largeMassBias,
     fragmentation: config.fragmentation,
     chainTendency: config.chainTendency,
