@@ -99,6 +99,21 @@ const classifyLandElevation = (
   return 'flat';
 };
 
+const normalizeClimateBlend = (value: number): number => clamp((value - 0.5) * 1.18 + 0.5, 0, 1);
+
+const sampleClimateNoise = (
+  tile: GridTile,
+  noiseAt: (q: number, r: number, salt?: string) => number,
+  salt: string,
+): number => {
+  const base = noiseAt(tile.q, tile.r, `${salt}-base`);
+  const axisA = noiseAt(tile.q + tile.r, -tile.q, `${salt}-axis-a`);
+  const axisB = noiseAt(-tile.r, tile.q + tile.r, `${salt}-axis-b`);
+  const micro = noiseAt(tile.q * 2 - tile.r, tile.r * 2 + tile.q, `${salt}-micro`);
+
+  return normalizeClimateBlend(base * 0.38 + axisA * 0.24 + axisB * 0.24 + micro * 0.14);
+};
+
 const classifyLandTerrain = (
   tile: GridTile,
   gridHeight: number,
@@ -108,9 +123,9 @@ const classifyLandTerrain = (
 ): TileType => {
   const normalizedRow = gridHeight > 1 ? tile.row / (gridHeight - 1) : 0.5;
   const latitude = Math.abs(normalizedRow - 0.5) * 2;
-  const heatNoise = noiseAt(tile.q, tile.r, 'terrain-heat');
-  const moistureNoise = noiseAt(tile.q, tile.r, 'terrain-moisture');
-  const fertilityNoise = noiseAt(tile.q, tile.r, 'terrain-fertility');
+  const heatNoise = sampleClimateNoise(tile, noiseAt, 'terrain-heat');
+  const moistureNoise = sampleClimateNoise(tile, noiseAt, 'terrain-moisture');
+  const fertilityNoise = sampleClimateNoise(tile, noiseAt, 'terrain-fertility');
   const coastalMoisture = Math.max(0, 2 - Math.max(0, distanceToWater)) * 0.1;
   const elevationColdPenalty = elevation === 'mountain' ? 0.08 : elevation === 'hill' ? 0.03 : 0;
   const aridity = clamp(

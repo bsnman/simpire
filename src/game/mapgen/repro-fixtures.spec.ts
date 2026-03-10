@@ -13,6 +13,7 @@ import {
 } from '~/game/mapgen/pipeline/metrics';
 import { archipelagoDiagonalReproFixture } from '~/game/mapgen/fixtures/archipelagoDiagonalRepro';
 import type { MapTile } from '~/types/map';
+import { toHexKey } from '~/types/hex';
 
 const archipelagoHillBalanceRepro = {
   request: {
@@ -30,6 +31,32 @@ const archipelagoHillBalanceRepro = {
     params: {
       landRatio: 0.24,
       islandSizeBias: 0.36,
+      chainTendency: 0.64,
+      shelfWidth: 2,
+      tectonicStrength: 0.52,
+    },
+  },
+} as const;
+
+const archipelagoTerrainBandingRepro = {
+  request: {
+    algorithmId: 'archipelago',
+    width: 50,
+    height: 50,
+    layout: 'pointy',
+    tileSize: 24,
+    origin: {
+      x: 80,
+      y: 80,
+    },
+    seedHash: 'archipelago-1773121679904',
+    mapId: 'game-1773121679904',
+    params: {
+      landmassCount: 11,
+      landmassCountMin: 11,
+      landmassCountMax: 11,
+      landmassSize: 0.36,
+      landRatio: 0.24,
       chainTendency: 0.64,
       shelfWidth: 2,
       tectonicStrength: 0.52,
@@ -148,5 +175,31 @@ describe('mapgen repro fixtures', () => {
     expect(hillShare).toBeLessThanOrEqual(0.35);
     expect(elevationCoverage).toBe(1);
     expect(counts.grassland).toBeGreaterThanOrEqual(counts.plains);
+  });
+
+  it('breaks up archived lowland biome striping on the terrain banding repro seed', () => {
+    const map = generateMap(archipelagoTerrainBandingRepro.request);
+    const terrains: string[] = [];
+
+    for (let r = 31; r <= 39; r += 1) {
+      const tile = map.tilesByKey[toHexKey(19, r)];
+
+      if (!tile) {
+        continue;
+      }
+
+      terrains.push(tile.terrain);
+    }
+
+    expect(terrains).toHaveLength(9);
+
+    const firstTerrain = terrains[0];
+    const isUniformLowlandStripe =
+      typeof firstTerrain === 'string' &&
+      (firstTerrain === 'grassland' || firstTerrain === 'plains') &&
+      terrains.every((terrain) => terrain === firstTerrain);
+
+    expect(isUniformLowlandStripe).toBe(false);
+    expect(new Set(terrains).size).toBeGreaterThan(1);
   });
 });

@@ -91,6 +91,7 @@ Important anti-artifact rule: primary-region selection is intentionally kept clo
 - Convert land/water masks and elevation into layered biome + elevation output (`terrain-classify.ts`):
   - Tile terrain (biome/water): `ocean`, `deep_sea`, `coastal_sea`, `grassland`, `plains`, `desert`, `tundra`
   - Elevation: `underwater`, `flat`, `hill`, `mountain`
+- Climate channels (`heat`, `moisture`, `fertility`) should be sampled with deterministic rotated/isotropic multi-sample blending instead of single-point coordinate hash lookups, to prevent straight-line biome striping artifacts.
 
 This separation allows combinations like plains hills or tundra mountains without encoding every combination as a terrain id.
 
