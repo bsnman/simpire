@@ -1,12 +1,22 @@
-import { Container, Graphics } from 'pixi.js';
+import { Group, type Camera, type Mesh, type Raycaster } from 'three';
 
 import { tiles } from '~/base/tiles';
-import { fromHexKey, toHexKey, type HexKey } from '~/types/hex';
+import { fromHexKey, type HexKey } from '~/types/hex';
 import type { GameMap, MapTile } from '~/types/map';
-import { axialToPixel, hexCornerPoints, pixelToAxial, roundAxial } from '~/game/render/hexMath';
+import { axialToPixel } from '~/game/render/hexMath';
+import { HexTileMeshFactory } from '~/game/render/three/HexTileMeshFactory';
+import { pickHexKeyAtScreenPoint } from '~/game/render/three/raycast';
 
-const BORDER_COLOR = '#1D1D1D';
 const FALLBACK_TILE_COLOR = '#6B7280';
+
+type HoverUpdateContext = {
+  screenX: number;
+  screenY: number;
+  viewportWidth: number;
+  viewportHeight: number;
+  camera: Camera;
+  raycaster: Raycaster;
+};
 
 export type HoveredTile = {
   key: HexKey;
@@ -14,34 +24,34 @@ export type HoveredTile = {
 };
 
 export class MapLayer {
-  public readonly container = new Container({ label: 'map-layer' });
+  public readonly group = new Group();
+
+  private readonly tileMeshFactory = new HexTileMeshFactory();
   private currentMap: GameMap | null = null;
   private hoveredTileKey: HexKey | null = null;
   private hoveredTileChangeHandler: ((hoveredTile: HoveredTile | null) => void) | null = null;
+  private raycastTargets: Mesh[] = [];
+
+  constructor() {
+    this.group.name = 'map-layer';
+  }
 
   render(map: GameMap) {
     this.currentMap = map;
-    this.container.removeChildren().forEach((child) => child.destroy());
+    this.group.clear();
+    this.raycastTargets = [];
 
     for (const key of map.tileKeys) {
       const tile = map.tilesByKey[key];
       const { q, r } = tile ?? fromHexKey(key);
       const center = axialToPixel({ q, r }, map.tileSize, map.layout);
-      const points = hexCornerPoints(
-        center.x + map.origin.x,
-        center.y + map.origin.y,
-        map.tileSize,
-        map.layout,
-      );
-
-      const graphic = new Graphics();
       const tileColor = tile ? tiles[tile.terrain].color : FALLBACK_TILE_COLOR;
+      const mesh = this.tileMeshFactory.createTileMesh(map.tileSize, map.layout, tileColor, key);
 
-      graphic.poly(points, true);
-      graphic.fill(tileColor);
-      graphic.stroke({ color: BORDER_COLOR, width: 1.5 });
+      mesh.position.set(center.x + map.origin.x, center.y + map.origin.y, 0);
 
-      this.container.addChild(graphic);
+      this.group.add(mesh);
+      this.raycastTargets.push(mesh);
     }
 
     if (this.hoveredTileKey) {
@@ -72,21 +82,29 @@ export class MapLayer {
     handler(hoveredTile ? { key: this.hoveredTileKey, tile: hoveredTile } : null);
   }
 
-  updateHoveredTileAtWorldPoint(worldX: number, worldY: number) {
+  updateHoveredTileAtScreenPoint({
+    screenX,
+    screenY,
+    viewportWidth,
+    viewportHeight,
+    camera,
+    raycaster,
+  }: HoverUpdateContext) {
     if (!this.currentMap) {
       this.updateHoveredTileKey(null);
       return;
     }
 
-    const localPoint = {
-      x: worldX - this.currentMap.origin.x,
-      y: worldY - this.currentMap.origin.y,
-    };
-    const roundedCoord = roundAxial(
-      pixelToAxial(localPoint, this.currentMap.tileSize, this.currentMap.layout),
-    );
-    const key = toHexKey(roundedCoord.q, roundedCoord.r);
-    const tile = this.currentMap.tilesByKey[key];
+    const key = pickHexKeyAtScreenPoint({
+      screenX,
+      screenY,
+      viewportWidth,
+      viewportHeight,
+      camera,
+      raycaster,
+      targets: this.raycastTargets,
+    });
+    const tile = key ? this.currentMap.tilesByKey[key] : undefined;
 
     this.updateHoveredTileKey(tile ? key : null);
   }
@@ -96,10 +114,12 @@ export class MapLayer {
   }
 
   destroy() {
-    this.container.destroy({ children: true });
+    this.group.clear();
+    this.tileMeshFactory.destroy();
     this.currentMap = null;
     this.hoveredTileKey = null;
     this.hoveredTileChangeHandler = null;
+    this.raycastTargets = [];
   }
 
   private updateHoveredTileKey(nextHoveredTileKey: HexKey | null) {

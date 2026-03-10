@@ -17,7 +17,7 @@
 
 ## State Management (Pinia)
 
-- Store domain state, not Pixi objects.
+- Store domain state, not Three.js objects.
 - Use explicit action names describing intent (`setMap`, `spawnUnit`, `endTurn`).
 - Keep side effects out of getters.
 - Keep store IDs and exported composables aligned and domain-specific.
@@ -43,7 +43,7 @@
 
 - Keep route views thin.
 - Put gameplay logic in store/services, not directly in SFC templates.
-- Keep Pixi lifecycle managed in composables or dedicated renderer classes.
+- Keep Three.js lifecycle managed in composables or dedicated renderer classes.
 
 ## UI Design Standards
 

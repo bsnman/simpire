@@ -4,6 +4,29 @@
 
 Migrate the runtime renderer from PixiJS to Three.js while preserving current gameplay/data contracts, controls, and debug workflows.
 
+## Completion Status (Updated March 10, 2026)
+
+- Phase 0 completed:
+- Baseline checks were executed before migration work (`npm test`, `npm run lint`), with pre-existing lint findings in CJS config files fixed during this migration.
+- Phase 1 completed:
+- Added `three` and `@types/three`.
+- Added scaffolding modules:
+  - `src/game/render/three/sceneSetup.ts`
+  - `src/game/render/three/HexTileMeshFactory.ts`
+  - `src/game/render/three/raycast.ts`
+- Phase 2 completed:
+- Replaced `GameRenderer` internals with Three.js while keeping `GameView.vue` API integration stable.
+- Preserved zoom, edge pan, pointer-lock pan, drag pan, and arrow-key pan.
+- Phase 3 completed:
+- Replaced Pixi `MapLayer` graphics rendering with Three.js tile meshes in deterministic `tileKeys` order.
+- Implemented hover picking with raycasting and `HexKey` metadata resolution.
+- Phase 4 completed:
+- Removed `pixi.js` dependency and removed runtime Pixi references from `src`.
+- `GameView.vue` remained behaviorally compatible without lifecycle rewrites.
+- Phase 5 completed:
+- Added raycast helper tests at `src/game/render/three/raycast.spec.ts`.
+- Verification completed: `npm test`, `npm run lint`, and `npm run build` all pass locally.
+
 ## Scope
 
 - In scope:
@@ -66,17 +89,20 @@ This keeps future extension points explicit (terrain feature/resource/unit layer
 ### Phase 0: Pre-migration guardrails
 
 1. Create branch and baseline checks:
+
 - `npm test`
 - `npm run lint`
 
 2. Add migration tracking notes in this document as each phase closes.
 
 Acceptance criteria:
+
 - Baseline passes before renderer changes start.
 
 ### Phase 1: Dependency and scaffold
 
 1. Add dependencies:
+
 - `three`
 - `@types/three` (if needed by TS config)
 
@@ -85,12 +111,14 @@ Acceptance criteria:
 3. Create Three scaffolding modules (`sceneSetup`, mesh factory, raycast helper).
 
 Acceptance criteria:
+
 - Project builds with both Pixi and Three present.
 - New modules compile but are not yet wired to gameplay.
 
 ### Phase 2: GameRenderer swap (API-compatible)
 
 1. Re-implement `GameRenderer` internals using Three.js while preserving current public methods used by `GameView.vue`:
+
 - `init(canvas)`
 - `renderMap(map)`
 - `setHoveredTileChangeHandler(handler)`
@@ -101,25 +129,30 @@ Acceptance criteria:
 - `destroy()`
 
 2. Camera model recommendation:
+
 - Orthographic camera for parity with current top-down map.
 - Zoom by camera zoom factor and cursor-centered world anchoring.
 
 3. Tick/update loop:
+
 - Keep `cameraControls.ts` as source of pan vectors.
 - Apply deltas in render loop with frame-time scaling.
 
 Acceptance criteria:
+
 - `GameView.vue` does not require behavioral rewrites.
 - Existing pan/zoom interactions still work end-to-end.
 
 ### Phase 3: MapLayer migration
 
 1. Replace Pixi graphics hex drawing with Three geometry:
+
 - Hex shape geometry (flat mesh per tile).
 - Material color from `tiles[tile.terrain].color`.
 - Deterministic creation order from `map.tileKeys`.
 
 2. Hover picking:
+
 - Raycast against map meshes.
 - Map `intersection.object` back to `HexKey` metadata.
 - Keep `HoveredTile` callback contract unchanged.
@@ -127,6 +160,7 @@ Acceptance criteria:
 3. Ensure `render(map)` can handle full redraw first; optimize later.
 
 Acceptance criteria:
+
 - Full map renders with correct colors/origin/layout.
 - Hover panel still resolves correct `q,r` + tile data.
 
@@ -138,26 +172,31 @@ Acceptance criteria:
 4. Run `rg "pixi" src` to verify cleanup.
 
 Acceptance criteria:
+
 - No runtime Pixi dependency left.
 - Game route works with Three renderer only.
 
 ### Phase 5: Tests and hardening
 
 1. Keep and pass existing tests:
+
 - `src/game/render/hexMath.spec.ts`
 - `src/game/render/cameraControls.spec.ts`
 
 2. Add focused tests for new pure helpers (raycast mapping/math helpers).
 3. Add renderer smoke test strategy:
+
 - Instantiate renderer in jsdom-safe path where possible.
 - Unit test non-WebGL logic separately (camera math, coordinate transforms, hover key mapping).
 
 4. Execute:
+
 - `npm test`
 - `npm run lint`
 - `npm run build`
 
 Acceptance criteria:
+
 - All checks pass locally.
 - No regression in map generation or tile info display flow.
 
