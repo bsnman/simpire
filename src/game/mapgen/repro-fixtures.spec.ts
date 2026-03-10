@@ -40,26 +40,34 @@ const archipelagoHillBalanceRepro = {
 const countLandTerrains = (tiles: readonly MapTile[]) => {
   let grassland = 0;
   let plains = 0;
+  let desert = 0;
+  let tundra = 0;
+  let flat = 0;
   let hill = 0;
   let mountain = 0;
 
   for (const tile of tiles) {
     if (tile.terrain === 'grassland') {
       grassland += 1;
-      continue;
-    }
-
-    if (tile.terrain === 'plains') {
+    } else if (tile.terrain === 'plains') {
       plains += 1;
+    } else if (tile.terrain === 'desert') {
+      desert += 1;
+    } else if (tile.terrain === 'tundra') {
+      tundra += 1;
+    }
+
+    if (tile.elevation === 'flat') {
+      flat += 1;
       continue;
     }
 
-    if (tile.terrain === 'hill') {
+    if (tile.elevation === 'hill') {
       hill += 1;
       continue;
     }
 
-    if (tile.terrain === 'mountain') {
+    if (tile.elevation === 'mountain') {
       mountain += 1;
     }
   }
@@ -67,9 +75,12 @@ const countLandTerrains = (tiles: readonly MapTile[]) => {
   return {
     grassland,
     plains,
+    desert,
+    tundra,
+    flat,
     hill,
     mountain,
-    landTileCount: grassland + plains + hill + mountain,
+    landTileCount: grassland + plains + desert + tundra,
   };
 };
 
@@ -129,10 +140,13 @@ describe('mapgen repro fixtures', () => {
     const counts = countLandTerrains(tiles);
     const lowlandShare = (counts.grassland + counts.plains) / Math.max(1, counts.landTileCount);
     const hillShare = counts.hill / Math.max(1, counts.landTileCount);
+    const elevationCoverage =
+      (counts.flat + counts.hill + counts.mountain) / Math.max(1, counts.landTileCount);
 
     expect(counts.landTileCount).toBeGreaterThan(0);
     expect(lowlandShare).toBeGreaterThanOrEqual(0.45);
     expect(hillShare).toBeLessThanOrEqual(0.35);
+    expect(elevationCoverage).toBe(1);
     expect(counts.grassland).toBeGreaterThanOrEqual(counts.plains);
   });
 });

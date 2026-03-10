@@ -36,6 +36,7 @@ type MapTile = {
   q: number;
   r: number;
   terrain: string;
+  elevation: string;
   terrainFeatureId?: string;
   resourceId?: string;
 };
@@ -49,6 +50,8 @@ type GameMap = {
   tileKeys: HexKey[]; // stable iteration for rendering
 };
 ```
+
+Base biome (`terrain`) and relief (`elevation`) should remain separate so rules can express combinations like plains hills or tundra mountains without multiplying terrain IDs.
 
 Why this shape:
 

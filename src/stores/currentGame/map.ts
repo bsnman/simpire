@@ -4,6 +4,7 @@ import { defineStore } from 'pinia';
 import { canPlaceResourceOnTerrain, type ResourceType } from '~/base/resources';
 import { canPlaceTerrainFeatureOnTerrain, type TerrainFeatureType } from '~/base/terrainFeatures';
 import type { TileType } from '~/base/tiles';
+import type { ElevationType } from '~/base/elevation';
 import type { GameMap } from '~/types/map';
 import { toHexKey } from '~/types/hex';
 import {
@@ -29,6 +30,19 @@ const DEFAULT_MAP_REQUEST: MapGenerationRequest = {
   layout: 'pointy',
   tileSize: 24,
   origin: { x: 80, y: 80 },
+};
+
+const WATER_TERRAIN_TYPES = new Set<TileType>(['coastal_sea', 'deep_sea', 'ocean']);
+
+const normalizeElevationForTerrain = (
+  terrain: TileType,
+  elevation: ElevationType,
+): ElevationType => {
+  if (WATER_TERRAIN_TYPES.has(terrain)) {
+    return 'underwater';
+  }
+
+  return elevation === 'underwater' ? 'flat' : elevation;
 };
 
 export const useCurrentGameMapStore = defineStore('currentGameMap', () => {
@@ -62,20 +76,55 @@ export const useCurrentGameMapStore = defineStore('currentGameMap', () => {
       return;
     }
 
+    const elevation = normalizeElevationForTerrain(terrain, existing.elevation);
     const terrainFeatureId =
       existing.terrainFeatureId &&
-      !canPlaceTerrainFeatureOnTerrain(existing.terrainFeatureId, terrain)
+      !canPlaceTerrainFeatureOnTerrain(existing.terrainFeatureId, terrain, elevation)
         ? undefined
         : existing.terrainFeatureId;
 
     const resourceId =
-      existing.resourceId && !canPlaceResourceOnTerrain(existing.resourceId, terrain)
+      existing.resourceId && !canPlaceResourceOnTerrain(existing.resourceId, terrain, elevation)
         ? undefined
         : existing.resourceId;
 
     currentMap.value.tilesByKey[key] = {
       ...existing,
       terrain,
+      elevation,
+      terrainFeatureId,
+      resourceId,
+    };
+  };
+
+  const setTileElevation = (q: number, r: number, elevation: ElevationType) => {
+    const key = toHexKey(q, r);
+    const existing = currentMap.value.tilesByKey[key];
+
+    if (!existing) {
+      return;
+    }
+
+    const normalizedElevation = normalizeElevationForTerrain(existing.terrain, elevation);
+    const terrainFeatureId =
+      existing.terrainFeatureId &&
+      !canPlaceTerrainFeatureOnTerrain(
+        existing.terrainFeatureId,
+        existing.terrain,
+        normalizedElevation,
+      )
+        ? undefined
+        : existing.terrainFeatureId;
+
+    const resourceId =
+      existing.resourceId &&
+      !canPlaceResourceOnTerrain(existing.resourceId, existing.terrain, normalizedElevation)
+        ? undefined
+        : existing.resourceId;
+
+    currentMap.value.tilesByKey[key] = {
+      ...existing,
+      elevation: normalizedElevation,
       terrainFeatureId,
       resourceId,
     };
@@ -93,7 +142,10 @@ export const useCurrentGameMapStore = defineStore('currentGameMap', () => {
       return false;
     }
 
-    if (terrainFeatureId && !canPlaceTerrainFeatureOnTerrain(terrainFeatureId, existing.terrain)) {
+    if (
+      terrainFeatureId &&
+      !canPlaceTerrainFeatureOnTerrain(terrainFeatureId, existing.terrain, existing.elevation)
+    ) {
       return false;
     }
 
@@ -113,7 +165,10 @@ export const useCurrentGameMapStore = defineStore('currentGameMap', () => {
       return false;
     }
 
-    if (resourceId && !canPlaceResourceOnTerrain(resourceId, existing.terrain)) {
+    if (
+      resourceId &&
+      !canPlaceResourceOnTerrain(resourceId, existing.terrain, existing.elevation)
+    ) {
       return false;
     }
 
@@ -132,6 +187,7 @@ export const useCurrentGameMapStore = defineStore('currentGameMap', () => {
     generateMap,
     regenerateMap,
     setTileTerrain,
+    setTileElevation,
     setTileTerrainFeature,
     setTileResource,
   };

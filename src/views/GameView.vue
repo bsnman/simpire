@@ -2,6 +2,7 @@
 import { storeToRefs } from 'pinia';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
+import { elevations } from '~/base/elevation';
 import { productionTypes, type ProductionType } from '~/base/productions';
 import { resources } from '~/base/resources';
 import { terrainFeatures } from '~/base/terrainFeatures';
@@ -70,6 +71,7 @@ const hoveredTileInfo = computed(() => {
   }
 
   const tileDefinition = tiles[hoveredMapTile.value.terrain];
+  const elevationDefinition = elevations[hoveredMapTile.value.elevation];
   const terrainFeatureDefinition = hoveredMapTile.value.terrainFeatureId
     ? terrainFeatures[hoveredMapTile.value.terrainFeatureId]
     : null;
@@ -77,6 +79,7 @@ const hoveredTileInfo = computed(() => {
     ? resources[hoveredMapTile.value.resourceId]
     : null;
   const baseProduction: ProductionValues = tileDefinition.resourceProduction ?? {};
+  const elevationProduction: ProductionValues = elevationDefinition.bonusProduction ?? {};
   const terrainFeatureProduction: ProductionValues =
     terrainFeatureDefinition?.bonusProduction ?? {};
   const resourceProduction: ProductionValues = resourceDefinition?.bonusProduction ?? {};
@@ -86,16 +89,22 @@ const hoveredTileInfo = computed(() => {
     r: hoveredMapTile.value.r,
     terrainType: tileDefinition.type,
     terrainName: tileDefinition.name,
+    elevationType: elevationDefinition.type,
+    elevationName: elevationDefinition.name,
     terrainFeatureName: terrainFeatureDefinition?.name ?? null,
     resourceName: resourceDefinition?.name ?? null,
-    moveCost: tileDefinition.metadata.moveCost,
-    defenseBonus: tileDefinition.metadata.defenseBonus,
+    moveCost: Math.max(
+      1,
+      tileDefinition.metadata.moveCost + elevationDefinition.metadata.moveCostModifier,
+    ),
+    defenseBonus: tileDefinition.metadata.defenseBonus + elevationDefinition.metadata.defenseBonus,
     navalPassable: tileDefinition.metadata.navalPassable,
     productions: PRODUCTION_ORDER.map((productionType) => ({
       type: productionType,
       label: productionTypes[productionType].name,
       amount:
         (baseProduction[productionType] ?? 0) +
+        (elevationProduction[productionType] ?? 0) +
         (terrainFeatureProduction[productionType] ?? 0) +
         (resourceProduction[productionType] ?? 0),
     })),
@@ -455,6 +464,9 @@ onUnmounted(() => {
         <p class="tile-hover-coord">
           Type: {{ hoveredTileInfo.terrainType }} | q: {{ hoveredTileInfo.q }}, r:
           {{ hoveredTileInfo.r }}
+        </p>
+        <p class="tile-hover-coord">
+          Elevation: {{ hoveredTileInfo.elevationName }} ({{ hoveredTileInfo.elevationType }})
         </p>
         <p class="tile-hover-coord">Feature: {{ hoveredTileInfo.terrainFeatureName ?? 'None' }}</p>
         <p class="tile-hover-coord">Resource: {{ hoveredTileInfo.resourceName ?? 'None' }}</p>

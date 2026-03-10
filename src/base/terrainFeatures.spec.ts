@@ -11,6 +11,7 @@ describe('terrainFeatures', () => {
     expect(canPlaceTerrainFeatureOnTerrain('forest', 'grassland')).toBe(true);
     expect(canPlaceTerrainFeatureOnTerrain('forest', 'coastal_sea')).toBe(false);
     expect(canPlaceTerrainFeatureOnTerrain('reeds', 'coastal_sea')).toBe(true);
-    expect(canPlaceTerrainFeatureOnTerrain('reeds', 'mountain')).toBe(false);
+    expect(canPlaceTerrainFeatureOnTerrain('reeds', 'desert', 'mountain')).toBe(false);
+    expect(canPlaceTerrainFeatureOnTerrain('forest', 'desert', 'hill')).toBe(true);
   });
 });

@@ -88,9 +88,11 @@ Important anti-artifact rule: primary-region selection is intentionally kept clo
 
 ## Step 5: Terrain Classification
 
-- Convert land/water masks and elevation into terrain ids (`terrain-classify.ts`):
-  - Water: `ocean`, `deep_sea`, `coastal_sea`
-  - Land: `grassland`, `plains`, `hill`, `mountain`
+- Convert land/water masks and elevation into layered biome + elevation output (`terrain-classify.ts`):
+  - Tile terrain (biome/water): `ocean`, `deep_sea`, `coastal_sea`, `grassland`, `plains`, `desert`, `tundra`
+  - Elevation: `underwater`, `flat`, `hill`, `mountain`
+
+This separation allows combinations like plains hills or tundra mountains without encoding every combination as a terrain id.
 
 ## Step 6: Quality Metrics
 

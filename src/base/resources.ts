@@ -1,4 +1,5 @@
 import type { ProductionType } from '~/base/productions';
+import type { ElevationType } from '~/base/elevation';
 import type { TileType } from '~/base/tiles';
 
 export type ResourceRarity = 'common' | 'uncommon' | 'rare';
@@ -13,6 +14,7 @@ export type Resource = {
   spawnWeight: number;
   bonusProduction?: { [key in ProductionType]?: number };
   allowedTerrains: TileType[];
+  allowedElevations: ElevationType[];
 };
 
 export const resources = {
@@ -29,7 +31,8 @@ export const resources = {
       hammer: 1,
       gold: 0,
     },
-    allowedTerrains: ['hill', 'mountain'] as TileType[],
+    allowedTerrains: [] as TileType[],
+    allowedElevations: ['hill', 'mountain'] as ElevationType[],
   },
   clay: {
     type: 'clay',
@@ -45,6 +48,7 @@ export const resources = {
       gold: 0,
     },
     allowedTerrains: ['grassland', 'plains', 'coastal_sea'] as TileType[],
+    allowedElevations: [] as ElevationType[],
   },
   fish: {
     type: 'fish',
@@ -60,6 +64,7 @@ export const resources = {
       gold: 0,
     },
     allowedTerrains: ['coastal_sea', 'deep_sea'] as TileType[],
+    allowedElevations: [] as ElevationType[],
   },
   wheat: {
     type: 'wheat',
@@ -75,6 +80,7 @@ export const resources = {
       gold: 0,
     },
     allowedTerrains: ['grassland', 'plains'] as TileType[],
+    allowedElevations: [] as ElevationType[],
   },
   rice: {
     type: 'rice',
@@ -90,6 +96,7 @@ export const resources = {
       gold: 0,
     },
     allowedTerrains: ['grassland'] as TileType[],
+    allowedElevations: [] as ElevationType[],
   },
   iron_ore: {
     type: 'iron_ore',
@@ -104,7 +111,8 @@ export const resources = {
       hammer: 2,
       gold: 0,
     },
-    allowedTerrains: ['hill', 'mountain'] as TileType[],
+    allowedTerrains: [] as TileType[],
+    allowedElevations: ['hill', 'mountain'] as ElevationType[],
   },
   bronze_ore: {
     type: 'bronze_ore',
@@ -119,7 +127,8 @@ export const resources = {
       hammer: 1,
       gold: 1,
     },
-    allowedTerrains: ['hill', 'plains'] as TileType[],
+    allowedTerrains: ['plains'] as TileType[],
+    allowedElevations: ['hill'] as ElevationType[],
   },
   coal: {
     type: 'coal',
@@ -134,7 +143,8 @@ export const resources = {
       hammer: 2,
       gold: 0,
     },
-    allowedTerrains: ['hill', 'mountain'] as TileType[],
+    allowedTerrains: [] as TileType[],
+    allowedElevations: ['hill', 'mountain'] as ElevationType[],
   },
   crab: {
     type: 'crab',
@@ -150,6 +160,7 @@ export const resources = {
       gold: 1,
     },
     allowedTerrains: ['coastal_sea'] as TileType[],
+    allowedElevations: [] as ElevationType[],
   },
   tuna: {
     type: 'tuna',
@@ -165,6 +176,7 @@ export const resources = {
       gold: 0,
     },
     allowedTerrains: ['deep_sea', 'ocean'] as TileType[],
+    allowedElevations: [] as ElevationType[],
   },
   cattle: {
     type: 'cattle',
@@ -180,6 +192,7 @@ export const resources = {
       gold: 0,
     },
     allowedTerrains: ['grassland', 'plains'] as TileType[],
+    allowedElevations: [] as ElevationType[],
   },
   sheep: {
     type: 'sheep',
@@ -194,7 +207,8 @@ export const resources = {
       hammer: 1,
       gold: 0,
     },
-    allowedTerrains: ['plains', 'hill'] as TileType[],
+    allowedTerrains: ['plains'] as TileType[],
+    allowedElevations: ['hill'] as ElevationType[],
   },
   salt: {
     type: 'salt',
@@ -210,6 +224,7 @@ export const resources = {
       gold: 1,
     },
     allowedTerrains: ['plains', 'coastal_sea'] as TileType[],
+    allowedElevations: [] as ElevationType[],
   },
   spices: {
     type: 'spices',
@@ -225,6 +240,7 @@ export const resources = {
       gold: 1,
     },
     allowedTerrains: ['grassland', 'plains'] as TileType[],
+    allowedElevations: [] as ElevationType[],
   },
   gold_ore: {
     type: 'gold_ore',
@@ -239,7 +255,8 @@ export const resources = {
       hammer: 0,
       gold: 3,
     },
-    allowedTerrains: ['hill', 'mountain'] as TileType[],
+    allowedTerrains: [] as TileType[],
+    allowedElevations: ['hill', 'mountain'] as ElevationType[],
   },
   gems: {
     type: 'gems',
@@ -254,7 +271,8 @@ export const resources = {
       hammer: 1,
       gold: 2,
     },
-    allowedTerrains: ['hill', 'mountain'] as TileType[],
+    allowedTerrains: [] as TileType[],
+    allowedElevations: ['hill', 'mountain'] as ElevationType[],
   },
   pearls: {
     type: 'pearls',
@@ -270,6 +288,7 @@ export const resources = {
       gold: 2,
     },
     allowedTerrains: ['coastal_sea'] as TileType[],
+    allowedElevations: [] as ElevationType[],
   },
   whales: {
     type: 'whales',
@@ -285,15 +304,34 @@ export const resources = {
       gold: 2,
     },
     allowedTerrains: ['deep_sea', 'ocean'] as TileType[],
+    allowedElevations: [] as ElevationType[],
   },
 } satisfies Record<string, Resource>;
 
 export type ResourceType = keyof typeof resources;
 
-export const canPlaceResourceOnTerrain = (resourceType: ResourceType, terrain: TileType): boolean =>
-  resources[resourceType].allowedTerrains.includes(terrain);
+export const canPlaceResourceOnTerrain = (
+  resourceType: ResourceType,
+  terrain: TileType,
+  elevation: ElevationType = 'flat',
+): boolean => {
+  const resource = resources[resourceType];
+  const hasTerrainRules = resource.allowedTerrains.length > 0;
+  const hasElevationRules = resource.allowedElevations.length > 0;
+  const terrainAllowed = resource.allowedTerrains.includes(terrain);
+  const elevationAllowed = resource.allowedElevations.includes(elevation);
 
-export const getResourcesForTerrain = (terrain: TileType): ResourceType[] =>
+  if (!hasTerrainRules && !hasElevationRules) {
+    return false;
+  }
+
+  return (hasTerrainRules && terrainAllowed) || (hasElevationRules && elevationAllowed);
+};
+
+export const getResourcesForTerrain = (
+  terrain: TileType,
+  elevation: ElevationType = 'flat',
+): ResourceType[] =>
   (Object.keys(resources) as ResourceType[]).filter((resourceType) =>
-    canPlaceResourceOnTerrain(resourceType, terrain),
+    canPlaceResourceOnTerrain(resourceType, terrain, elevation),
   );

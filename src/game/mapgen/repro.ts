@@ -81,7 +81,9 @@ export const createMapDigest = (map: GameMap): string => {
       continue;
     }
 
-    parts.push(`${key}|${tile.terrain}|${tile.terrainFeatureId ?? ''}|${tile.resourceId ?? ''}`);
+    parts.push(
+      `${key}|${tile.terrain}|${tile.elevation}|${tile.terrainFeatureId ?? ''}|${tile.resourceId ?? ''}`,
+    );
   }
 
   return `fnv1a:${fnv1a(parts.join(';')).toString(16).padStart(8, '0')}`;
