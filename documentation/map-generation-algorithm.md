@@ -108,8 +108,9 @@ This separation allows combinations like plains hills or tundra mountains withou
 
 ## Continents
 
-- `landRatio`
-- `continentCountTarget`
+- `landmassCount` (exact) or `landmassCountMin` + `landmassCountMax` (range)
+- `landmassSize`
+- `landRatio` (base ratio, scaled by size)
 - `tectonicStrength`
 - `coastlineRoughness`
 - `mountainIntensity`
@@ -118,13 +119,18 @@ Profile intent: fewer larger landmasses with stronger major-continent tendency.
 
 ## Archipelago
 
-- `landRatio`
-- `islandSizeBias`
+- `landmassCount` (exact) or `landmassCountMin` + `landmassCountMax` (range)
+- `landmassSize`
+- `landRatio` (base ratio, scaled by size)
 - `chainTendency`
 - `shelfWidth`
 - `tectonicStrength`
 
 Profile intent: fragmented island groups with higher ocean share and chain bias.
+
+Backward compatibility:
+
+- Legacy params are still accepted (`continentCountTarget`, `continentCount`, `islandSizeBias`, `islandDensity`, `seaLevelPercent`) and normalized into the new model.
 
 ## 5. Debug and Repro Workflow
 

@@ -333,6 +333,64 @@ describe('map generators', () => {
     ).not.toThrow();
   });
 
+  it('accepts explicit landmass count ranges for both built-in scripts', () => {
+    expect(() =>
+      generateMap({
+        algorithmId: CONTINENTS_GENERATOR_ID,
+        width: WIDTH,
+        height: HEIGHT,
+        seedHash: 'count-range-continents',
+        params: {
+          landRatio: 0.33,
+          landmassCountMin: 2,
+          landmassCountMax: 4,
+          landmassSize: 0.55,
+          tectonicStrength: 0.6,
+          coastlineRoughness: 0.57,
+          mountainIntensity: 0.56,
+        },
+      }),
+    ).not.toThrow();
+
+    expect(() =>
+      generateMap({
+        algorithmId: ARCHIPELAGO_GENERATOR_ID,
+        width: WIDTH,
+        height: HEIGHT,
+        seedHash: 'count-range-archipelago',
+        params: {
+          landRatio: 0.24,
+          landmassCountMin: 8,
+          landmassCountMax: 14,
+          landmassSize: 0.34,
+          chainTendency: 0.68,
+          shelfWidth: 2,
+          tectonicStrength: 0.52,
+        },
+      }),
+    ).not.toThrow();
+  });
+
+  it('can eliminate seas when landmassSize is pushed to maximum', () => {
+    const map = generateMap({
+      algorithmId: CONTINENTS_GENERATOR_ID,
+      width: WIDTH,
+      height: HEIGHT,
+      seedHash: 'all-land-size-test',
+      params: {
+        landRatio: 0.3,
+        landmassCountMin: 1,
+        landmassCountMax: 1,
+        landmassSize: 1,
+        tectonicStrength: 0.62,
+        coastlineRoughness: 0.58,
+        mountainIntensity: 0.58,
+      },
+    });
+
+    expect(buildMetrics(map).landRatio).toBeGreaterThanOrEqual(0.95);
+  });
+
   it('exposes parameter metadata for dynamic Create Game controls', () => {
     const continents = getMapGenerator(CONTINENTS_GENERATOR_ID);
     const archipelago = getMapGenerator(ARCHIPELAGO_GENERATOR_ID);
@@ -341,7 +399,7 @@ describe('map generators', () => {
     expect(archipelago?.parameterDefinitions?.length).toBeGreaterThanOrEqual(5);
 
     expect(continents?.parameterDefinitions?.some((entry) => entry.key === 'landRatio')).toBe(true);
-    expect(archipelago?.parameterDefinitions?.some((entry) => entry.key === 'islandSizeBias')).toBe(
+    expect(archipelago?.parameterDefinitions?.some((entry) => entry.key === 'landmassSize')).toBe(
       true,
     );
   });
