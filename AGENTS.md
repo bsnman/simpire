@@ -7,6 +7,7 @@ Follow these project-specific instructions when working in this repo.
 - Read `documentation/README.md` to choose relevant docs.
 - Read `documentation/project-overview.md` before architecture or feature work.
 - Read `documentation/technical-guidance.md` before gameplay, map, renderer, or state changes.
+- Read `documentation/map-generation-algorithm.md` before map generation architecture or algorithm changes.
 - Read `documentation/coding-standards.md` before editing files.
 - Read `documentation/ui-style-guide.md` before visual UI updates (menus, overlays, panels, controls).
 
