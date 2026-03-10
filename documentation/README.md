@@ -19,3 +19,7 @@ Purpose: this folder is the canonical context for implementation work in this re
 - Read `map-generation-algorithm.md` before implementing or refactoring map generation architecture or algorithms.
 - Use root imports for internal app modules with `/...` only. Do not use `@/...` or `../` parent-relative imports.
 - If a task changes architecture, conventions, or agreed patterns, update the relevant file in this folder and `AGENTS.md`.
+
+## Implementation Plans
+
+- `documentation/threejs-migration-implementation-plan.md`: phased migration plan from PixiJS renderer to Three.js renderer.
