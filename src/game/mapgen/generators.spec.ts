@@ -38,6 +38,22 @@ const countTerrains = (map: ReturnType<typeof generateMap>) => {
   return counts;
 };
 
+const countElevations = (map: ReturnType<typeof generateMap>) => {
+  const counts = new Map<MapTile['elevation'], number>();
+
+  for (const key of map.tileKeys) {
+    const tile = map.tilesByKey[key];
+
+    if (!tile) {
+      continue;
+    }
+
+    counts.set(tile.elevation, (counts.get(tile.elevation) ?? 0) + 1);
+  }
+
+  return counts;
+};
+
 const terrainDifferenceRatio = (
   left: ReturnType<typeof generateMap>,
   right: ReturnType<typeof generateMap>,
@@ -52,7 +68,7 @@ const terrainDifferenceRatio = (
       continue;
     }
 
-    if (leftTile.terrain !== rightTile.terrain) {
+    if (leftTile.terrain !== rightTile.terrain || leftTile.elevation !== rightTile.elevation) {
       changed += 1;
     }
   }
@@ -240,6 +256,7 @@ describe('map generators', () => {
       let aggregateLand = 0;
       let aggregateLowland = 0;
       let aggregateMountain = 0;
+      let aggregateHill = 0;
       let aggregateGrassland = 0;
       let aggregatePlains = 0;
 
@@ -252,30 +269,38 @@ describe('map generators', () => {
           params: scenario.params,
         });
 
-        const counts = countTerrains(map);
-        const grassland = counts.get('grassland') ?? 0;
-        const plains = counts.get('plains') ?? 0;
-        const hill = counts.get('hill') ?? 0;
-        const mountain = counts.get('mountain') ?? 0;
-        const land = grassland + plains + hill + mountain;
+        const terrainCounts = countTerrains(map);
+        const elevationCounts = countElevations(map);
+        const grassland = terrainCounts.get('grassland') ?? 0;
+        const plains = terrainCounts.get('plains') ?? 0;
+        const desert = terrainCounts.get('desert') ?? 0;
+        const tundra = terrainCounts.get('tundra') ?? 0;
+        const flat = elevationCounts.get('flat') ?? 0;
+        const hill = elevationCounts.get('hill') ?? 0;
+        const mountain = elevationCounts.get('mountain') ?? 0;
+        const land = grassland + plains + desert + tundra;
         const lowland = grassland + plains;
 
         expect(lowland).toBeGreaterThan(0);
         expect(mountain).toBeGreaterThan(0);
+        expect(flat + hill + mountain).toBe(land);
 
         aggregateLand += land;
         aggregateLowland += lowland;
         aggregateMountain += mountain;
+        aggregateHill += hill;
         aggregateGrassland += grassland;
         aggregatePlains += plains;
       }
 
       const lowlandShare = aggregateLowland / aggregateLand;
       const mountainShare = aggregateMountain / aggregateLand;
+      const ruggedShare = (aggregateHill + aggregateMountain) / aggregateLand;
       const grassToPlainsRatio = aggregateGrassland / Math.max(1, aggregatePlains);
 
       expect(lowlandShare).toBeGreaterThan(0.15);
       expect(mountainShare).toBeLessThan(0.45);
+      expect(ruggedShare).toBeLessThan(0.7);
       expect(grassToPlainsRatio).toBeGreaterThanOrEqual(0.9);
     }
   });

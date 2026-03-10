@@ -24,6 +24,7 @@ Follow these project-specific instructions when working in this repo.
 - Shared UI primitives (panels/buttons/inputs/modal shells) must live in `src/components/ui/` for reuse across menu and in-game UI.
 - When rendering dropdowns with `GSelect`, use `GSelectOption` for option entries so option-list styling remains readable across platforms.
 - Map generators that support Create Game customization must expose `parameterDefinitions` metadata in their generator definition so UI controls can be derived without hardcoded per-view parameter maps.
+- Model base tile terrain (biome/water) separately from elevation (`underwater`, `flat`, `hill`, `mountain`) so combinations like plains hills are possible without terrain-id explosion.
 - Terrain cover (for example forest, jungle, bamboo, reeds) must be modeled as a terrain-feature layer separate from economic resources so both can coexist on a tile.
 - For macro terrain generation, avoid directional bias (for example diagonal streak artifacts) by using symmetric hex-neighbor rules, deterministic shuffled iteration where applicable, and isotropic/rotated noise sampling.
 - Keep macro-mask primary region selection close to target land ratio before final rebalance; avoid large one-pass rebalance corrections because they can introduce single-axis land streak artifacts.

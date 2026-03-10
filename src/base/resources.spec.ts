@@ -38,8 +38,8 @@ describe('resources', () => {
   });
 
   it('enforces terrain placement rules for land and water resources', () => {
-    expect(canPlaceResourceOnTerrain('gems', 'hill')).toBe(true);
-    expect(canPlaceResourceOnTerrain('gems', 'grassland')).toBe(false);
+    expect(canPlaceResourceOnTerrain('gems', 'plains', 'hill')).toBe(true);
+    expect(canPlaceResourceOnTerrain('gems', 'grassland', 'flat')).toBe(false);
     expect(canPlaceResourceOnTerrain('fish', 'coastal_sea')).toBe(true);
     expect(canPlaceResourceOnTerrain('fish', 'plains')).toBe(false);
     expect(canPlaceResourceOnTerrain('whales', 'ocean')).toBe(true);
@@ -74,6 +74,9 @@ describe('resources', () => {
   it('exposes terrain-to-resource lookup helper', () => {
     expect(getResourcesForTerrain('grassland')).toEqual(
       expect.arrayContaining(['wheat', 'rice', 'cattle']),
+    );
+    expect(getResourcesForTerrain('plains', 'mountain')).toEqual(
+      expect.arrayContaining(['stone', 'gold_ore', 'gems']),
     );
     expect(getResourcesForTerrain('ocean')).toEqual(expect.arrayContaining(['tuna', 'whales']));
   });

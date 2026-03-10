@@ -15,9 +15,10 @@ const ALLOWED_TERRAINS = new Set([
   'coastal_sea',
   'grassland',
   'plains',
-  'hill',
-  'mountain',
+  'desert',
+  'tundra',
 ]);
+const ALLOWED_ELEVATIONS = new Set(['underwater', 'flat', 'hill', 'mountain']);
 
 const createNoiseAt = (seed: string) => (q: number, r: number, salt?: string) =>
   hashNoiseAt(seed, q, r, salt);
@@ -154,6 +155,7 @@ describe('mapgen pipeline stages', () => {
 
     for (const tile of classified.tiles) {
       expect(ALLOWED_TERRAINS.has(tile.terrain)).toBe(true);
+      expect(ALLOWED_ELEVATIONS.has(tile.elevation)).toBe(true);
     }
   });
 });

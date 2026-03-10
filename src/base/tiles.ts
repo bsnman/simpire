@@ -1,25 +1,6 @@
 import type { Tile } from '~/types/tile';
 
 export const tiles = {
-  grassland: {
-    type: 'grassland',
-    name: 'Grassland',
-    description: 'Open fertile terrain suited for settlements and farming.',
-    image: null,
-    color: '#6EA84B',
-    metadata: {
-      isLand: true,
-      isWater: false,
-      moveCost: 1,
-      defenseBonus: 0,
-      navalPassable: false,
-    },
-    resourceProduction: {
-      food: 2,
-      hammer: 1,
-      gold: 0,
-    },
-  },
   coastal_sea: {
     type: 'coastal_sea',
     name: 'Coastal Sea',
@@ -77,41 +58,22 @@ export const tiles = {
       gold: 2,
     },
   },
-  hill: {
-    type: 'hill',
-    name: 'Hills',
-    description: 'Rolling elevations that slow movement and aid defense.',
+  grassland: {
+    type: 'grassland',
+    name: 'Grassland',
+    description: 'Open fertile terrain suited for settlements and farming.',
     image: null,
-    color: '#9A724C',
+    color: '#6EA84B',
     metadata: {
       isLand: true,
       isWater: false,
-      moveCost: 2,
-      defenseBonus: 1,
+      moveCost: 1,
+      defenseBonus: 0,
       navalPassable: false,
     },
     resourceProduction: {
-      food: 0,
+      food: 2,
       hammer: 1,
-      gold: 0,
-    },
-  },
-  mountain: {
-    type: 'mountain',
-    name: 'Mountain',
-    description: 'High elevation terrain that is difficult to cross.',
-    image: null,
-    color: '#7A7F88',
-    metadata: {
-      isLand: true,
-      isWater: false,
-      moveCost: 3,
-      defenseBonus: 2,
-      navalPassable: false,
-    },
-    resourceProduction: {
-      food: 0,
-      hammer: 2,
       gold: 0,
     },
   },
@@ -131,6 +93,44 @@ export const tiles = {
     resourceProduction: {
       food: 1,
       hammer: 0,
+      gold: 0,
+    },
+  },
+  desert: {
+    type: 'desert',
+    name: 'Desert',
+    description: 'Arid open terrain with low food output.',
+    image: null,
+    color: '#D7B46A',
+    metadata: {
+      isLand: true,
+      isWater: false,
+      moveCost: 1,
+      defenseBonus: 0,
+      navalPassable: false,
+    },
+    resourceProduction: {
+      food: 0,
+      hammer: 0,
+      gold: 1,
+    },
+  },
+  tundra: {
+    type: 'tundra',
+    name: 'Tundra',
+    description: 'Cold biome with limited agricultural productivity.',
+    image: null,
+    color: '#9FAF86',
+    metadata: {
+      isLand: true,
+      isWater: false,
+      moveCost: 1,
+      defenseBonus: 0,
+      navalPassable: false,
+    },
+    resourceProduction: {
+      food: 0,
+      hammer: 1,
       gold: 0,
     },
   },

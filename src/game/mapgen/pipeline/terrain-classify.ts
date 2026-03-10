@@ -1,8 +1,9 @@
-﻿import type { TileType } from '~/base/tiles';
+import type { ElevationType } from '~/base/elevation';
+import type { TileType } from '~/base/tiles';
 import { clamp } from '~/game/mapgen/helpers';
 import type { MapTile } from '~/types/map';
 
-import { isLandAt, type MapGrid } from '~/game/mapgen/pipeline/grid';
+import { isLandAt, type GridTile, type MapGrid } from '~/game/mapgen/pipeline/grid';
 
 export type TerrainClassificationConfig = {
   shelfWidth: number;
@@ -76,17 +77,16 @@ const classifyWaterTerrain = (distanceToLand: number, shelfWidth: number): TileT
   return 'ocean';
 };
 
-const classifyLandTerrain = (
+const classifyLandElevation = (
   elevation: number,
   distanceToWater: number,
   mountainIntensity: number,
   detailNoise: number,
-): TileType => {
+): ElevationType => {
   const inlandBoost = Math.min(4, Math.max(0, distanceToWater)) * 0.01;
   const normalized = clamp(elevation + inlandBoost + (detailNoise - 0.5) * 0.05, 0, 1);
   const mountainThreshold = 0.82 - mountainIntensity * 0.2;
   const hillThreshold = mountainThreshold - 0.1;
-  const plainsThreshold = hillThreshold - 0.04;
 
   if (normalized >= mountainThreshold) {
     return 'mountain';
@@ -96,11 +96,45 @@ const classifyLandTerrain = (
     return 'hill';
   }
 
-  if (normalized >= plainsThreshold) {
-    return 'plains';
+  return 'flat';
+};
+
+const classifyLandTerrain = (
+  tile: GridTile,
+  gridHeight: number,
+  elevation: ElevationType,
+  distanceToWater: number,
+  noiseAt: (q: number, r: number, salt?: string) => number,
+): TileType => {
+  const normalizedRow = gridHeight > 1 ? tile.row / (gridHeight - 1) : 0.5;
+  const latitude = Math.abs(normalizedRow - 0.5) * 2;
+  const heatNoise = noiseAt(tile.q, tile.r, 'terrain-heat');
+  const moistureNoise = noiseAt(tile.q, tile.r, 'terrain-moisture');
+  const fertilityNoise = noiseAt(tile.q, tile.r, 'terrain-fertility');
+  const coastalMoisture = Math.max(0, 2 - Math.max(0, distanceToWater)) * 0.1;
+  const elevationColdPenalty = elevation === 'mountain' ? 0.08 : elevation === 'hill' ? 0.03 : 0;
+  const aridity = clamp(
+    0.48 + heatNoise * 0.35 + latitude * 0.32 - moistureNoise * 0.42 - coastalMoisture,
+    0,
+    1,
+  );
+  const coldness = clamp(latitude * 0.76 + (1 - heatNoise) * 0.34 + elevationColdPenalty, 0, 1);
+
+  if (coldness >= 0.82) {
+    return 'tundra';
   }
 
-  return 'grassland';
+  if (aridity >= 0.7) {
+    return 'desert';
+  }
+
+  const fertility = clamp(
+    fertilityNoise + moistureNoise * 0.2 - latitude * 0.12 + coastalMoisture,
+    0,
+    1,
+  );
+
+  return fertility >= 0.52 ? 'grassland' : 'plains';
 };
 
 export const classifyTerrain = (
@@ -124,18 +158,28 @@ export const classifyTerrain = (
           distanceToLand[tileIndex] ?? Number.MAX_SAFE_INTEGER,
           shelfWidth,
         ),
+        elevation: 'underwater',
       };
     }
+
+    const landElevation = classifyLandElevation(
+      elevation[tileIndex] ?? 0,
+      distanceToWater[tileIndex] ?? 0,
+      mountainIntensity,
+      config.noiseAt(tile.q, tile.r, 'terrain-detail'),
+    );
 
     return {
       q: tile.q,
       r: tile.r,
       terrain: classifyLandTerrain(
-        elevation[tileIndex] ?? 0,
+        tile,
+        grid.height,
+        landElevation,
         distanceToWater[tileIndex] ?? 0,
-        mountainIntensity,
-        config.noiseAt(tile.q, tile.r, 'terrain-detail'),
+        config.noiseAt,
       ),
+      elevation: landElevation,
     };
   });
 

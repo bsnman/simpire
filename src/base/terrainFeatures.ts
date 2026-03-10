@@ -1,4 +1,5 @@
 import type { ProductionType } from '~/base/productions';
+import type { ElevationType } from '~/base/elevation';
 import type { TileType } from '~/base/tiles';
 
 export type TerrainFeature = {
@@ -9,6 +10,7 @@ export type TerrainFeature = {
   color: string;
   bonusProduction?: { [key in ProductionType]?: number };
   allowedTerrains: TileType[];
+  allowedElevations: ElevationType[];
 };
 
 export const terrainFeatures = {
@@ -23,7 +25,8 @@ export const terrainFeatures = {
       hammer: 1,
       gold: 0,
     },
-    allowedTerrains: ['grassland', 'plains', 'hill'] as TileType[],
+    allowedTerrains: ['grassland', 'plains'] as TileType[],
+    allowedElevations: ['hill'] as ElevationType[],
   },
   jungle: {
     type: 'jungle',
@@ -36,7 +39,8 @@ export const terrainFeatures = {
       hammer: 0,
       gold: 1,
     },
-    allowedTerrains: ['grassland', 'hill'] as TileType[],
+    allowedTerrains: ['grassland'] as TileType[],
+    allowedElevations: ['hill'] as ElevationType[],
   },
   bamboo_grove: {
     type: 'bamboo_grove',
@@ -50,6 +54,7 @@ export const terrainFeatures = {
       gold: 0,
     },
     allowedTerrains: ['grassland'] as TileType[],
+    allowedElevations: [] as ElevationType[],
   },
   reeds: {
     type: 'reeds',
@@ -63,6 +68,7 @@ export const terrainFeatures = {
       gold: 0,
     },
     allowedTerrains: ['coastal_sea', 'grassland'] as TileType[],
+    allowedElevations: [] as ElevationType[],
   },
 } satisfies Record<string, TerrainFeature>;
 
@@ -71,4 +77,17 @@ export type TerrainFeatureType = keyof typeof terrainFeatures;
 export const canPlaceTerrainFeatureOnTerrain = (
   terrainFeatureType: TerrainFeatureType,
   terrain: TileType,
-): boolean => terrainFeatures[terrainFeatureType].allowedTerrains.includes(terrain);
+  elevation: ElevationType = 'flat',
+): boolean => {
+  const terrainFeature = terrainFeatures[terrainFeatureType];
+  const hasTerrainRules = terrainFeature.allowedTerrains.length > 0;
+  const hasElevationRules = terrainFeature.allowedElevations.length > 0;
+  const terrainAllowed = terrainFeature.allowedTerrains.includes(terrain);
+  const elevationAllowed = terrainFeature.allowedElevations.includes(elevation);
+
+  if (!hasTerrainRules && !hasElevationRules) {
+    return false;
+  }
+
+  return (hasTerrainRules && terrainAllowed) || (hasElevationRules && elevationAllowed);
+};
