@@ -82,11 +82,11 @@ const classifyLandTerrain = (
   mountainIntensity: number,
   detailNoise: number,
 ): TileType => {
-  const inlandBoost = Math.min(4, Math.max(0, distanceToWater)) * 0.015;
+  const inlandBoost = Math.min(4, Math.max(0, distanceToWater)) * 0.01;
   const normalized = clamp(elevation + inlandBoost + (detailNoise - 0.5) * 0.05, 0, 1);
-  const mountainThreshold = 0.84 - mountainIntensity * 0.22;
-  const hillThreshold = mountainThreshold - 0.2;
-  const plainsThreshold = hillThreshold - 0.19;
+  const mountainThreshold = 0.82 - mountainIntensity * 0.2;
+  const hillThreshold = mountainThreshold - 0.1;
+  const plainsThreshold = hillThreshold - 0.04;
 
   if (normalized >= mountainThreshold) {
     return 'mountain';
