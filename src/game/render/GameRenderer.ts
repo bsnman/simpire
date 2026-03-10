@@ -1,4 +1,4 @@
-import { Application } from 'pixi.js';
+import { Group, Raycaster } from 'three';
 
 import type { GameMap } from '~/types/map';
 import { MapLayer, type HoveredTile } from '~/game/render/layers/MapLayer';
@@ -9,12 +9,15 @@ import {
   normalizePanVector,
   POINTER_LOCK_PAN_SENSITIVITY,
 } from '~/game/render/cameraControls';
+import { createSceneSetup, type ThreeSceneSetup } from '~/game/render/three/sceneSetup';
 
 type ArrowKey = 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown';
 
 export class GameRenderer {
-  private readonly app = new Application();
   private readonly mapLayer = new MapLayer();
+  private readonly raycaster = new Raycaster();
+  private readonly viewport = new Group();
+  private sceneSetup: ThreeSceneSetup | null = null;
   private initialized = false;
   private zoom = 0.62;
   private readonly minZoom = 0.3;
@@ -23,6 +26,12 @@ export class GameRenderer {
   private edgePointerPosition: { x: number; y: number } | null = null;
   private edgePointerViewportSize: { width: number; height: number } | null = null;
   private arrowKeyPanState = { left: false, right: false, up: false, down: false };
+  private animationFrameHandle: number | null = null;
+  private previousFrameTime: number | null = null;
+
+  constructor() {
+    this.viewport.name = 'map-viewport';
+  }
 
   async init(canvas: unknown) {
     if (this.initialized) {
@@ -33,17 +42,15 @@ export class GameRenderer {
       throw new Error('GameRenderer.init requires a canvas element.');
     }
 
-    await this.app.init({
-      canvas,
-      resizeTo: canvas.parentElement ?? window,
-      antialias: true,
-      background: '#101418',
-    });
+    this.sceneSetup = createSceneSetup(canvas);
+    this.viewport.clear();
+    this.viewport.position.set(0, 0, 0);
+    this.viewport.scale.set(this.zoom, this.zoom, 1);
+    this.viewport.add(this.mapLayer.group);
+    this.sceneSetup.scene.add(this.viewport);
 
-    this.app.stage.addChild(this.mapLayer.container);
-    this.app.stage.scale.set(this.zoom);
-    this.app.ticker.add(this.handleTick);
     this.initialized = true;
+    this.animationFrameHandle = globalThis.window.requestAnimationFrame(this.handleFrame);
   }
 
   renderMap(map: GameMap) {
@@ -59,14 +66,20 @@ export class GameRenderer {
   }
 
   updateHoveredTileFromScreenPoint(screenX: number, screenY: number) {
-    if (!this.initialized || this.pointerLocked) {
+    if (!this.initialized || this.pointerLocked || !this.sceneSetup) {
       return;
     }
 
-    const stage = this.app.stage;
-    const worldX = (screenX - stage.position.x) / stage.scale.x;
-    const worldY = (screenY - stage.position.y) / stage.scale.y;
-    this.mapLayer.updateHoveredTileAtWorldPoint(worldX, worldY);
+    const viewportSize = this.sceneSetup.getViewportSize();
+
+    this.mapLayer.updateHoveredTileAtScreenPoint({
+      screenX,
+      screenY,
+      viewportWidth: viewportSize.width,
+      viewportHeight: viewportSize.height,
+      camera: this.sceneSetup.camera,
+      raycaster: this.raycaster,
+    });
   }
 
   clearHoveredTile() {
@@ -86,12 +99,11 @@ export class GameRenderer {
       return;
     }
 
-    const stage = this.app.stage;
-    const worldX = (screenX - stage.position.x) / oldZoom;
-    const worldY = (screenY - stage.position.y) / oldZoom;
+    const worldX = (screenX - this.viewport.position.x) / oldZoom;
+    const worldY = (screenY - this.viewport.position.y) / oldZoom;
 
-    stage.scale.set(nextZoom);
-    stage.position.set(screenX - worldX * nextZoom, screenY - worldY * nextZoom);
+    this.viewport.scale.set(nextZoom, nextZoom, 1);
+    this.viewport.position.set(screenX - worldX * nextZoom, screenY - worldY * nextZoom, 0);
     this.zoom = nextZoom;
   }
 
@@ -171,9 +183,20 @@ export class GameRenderer {
       return;
     }
 
-    this.app.ticker.remove(this.handleTick);
+    if (this.animationFrameHandle !== null) {
+      globalThis.window.cancelAnimationFrame(this.animationFrameHandle);
+      this.animationFrameHandle = null;
+    }
+
+    this.previousFrameTime = null;
     this.mapLayer.destroy();
-    this.app.destroy(true);
+
+    if (this.sceneSetup) {
+      this.sceneSetup.scene.remove(this.viewport);
+      this.sceneSetup.destroy();
+      this.sceneSetup = null;
+    }
+
     this.pointerLocked = false;
     this.edgePointerPosition = null;
     this.edgePointerViewportSize = null;
@@ -182,16 +205,23 @@ export class GameRenderer {
   }
 
   private panByScreenDelta(deltaX: number, deltaY: number) {
-    this.app.stage.position.set(
-      this.app.stage.position.x + deltaX,
-      this.app.stage.position.y + deltaY,
-    );
+    this.viewport.position.x += deltaX;
+    this.viewport.position.y += deltaY;
   }
 
-  private readonly handleTick = () => {
-    if (!this.initialized) {
+  private readonly handleFrame = (timestamp: number) => {
+    if (!this.initialized || !this.sceneSetup) {
       return;
     }
+
+    this.sceneSetup.syncViewportSize();
+
+    const deltaSeconds =
+      this.previousFrameTime === null
+        ? 0
+        : Math.max(0, (timestamp - this.previousFrameTime) / 1000);
+
+    this.previousFrameTime = timestamp;
 
     const keyboardVector = getArrowKeyPanVector(this.arrowKeyPanState);
     const edgeVector =
@@ -208,18 +238,21 @@ export class GameRenderer {
       edgeVector.y + keyboardVector.y,
     );
 
-    if (vector.x === 0 && vector.y === 0) {
-      return;
+    if (vector.x !== 0 || vector.y !== 0) {
+      this.panByScreenDelta(
+        -vector.x * EDGE_PAN_SPEED_PX_PER_SECOND * deltaSeconds,
+        -vector.y * EDGE_PAN_SPEED_PX_PER_SECOND * deltaSeconds,
+      );
+
+      if (this.edgePointerPosition) {
+        this.updateHoveredTileFromScreenPoint(
+          this.edgePointerPosition.x,
+          this.edgePointerPosition.y,
+        );
+      }
     }
 
-    const deltaSeconds = this.app.ticker.deltaMS / 1000;
-    this.panByScreenDelta(
-      -vector.x * EDGE_PAN_SPEED_PX_PER_SECOND * deltaSeconds,
-      -vector.y * EDGE_PAN_SPEED_PX_PER_SECOND * deltaSeconds,
-    );
-
-    if (this.edgePointerPosition) {
-      this.updateHoveredTileFromScreenPoint(this.edgePointerPosition.x, this.edgePointerPosition.y);
-    }
+    this.sceneSetup.renderer.render(this.sceneSetup.scene, this.sceneSetup.camera);
+    this.animationFrameHandle = globalThis.window.requestAnimationFrame(this.handleFrame);
   };
 }

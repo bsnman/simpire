@@ -4,7 +4,7 @@
 
 - Project name: `simpire`
 - Frontend stack: Vue 3 + TypeScript + Vite
-- Rendering: PixiJS (for game view)
+- Rendering: Three.js (for game view)
 - State management: Pinia
 - Routing: Vue Router
 - Current maturity: early prototype with first rendering layer implemented
@@ -31,7 +31,7 @@
 - `src/stores`:
   Current game state and controlled state mutations/actions.
 - `src/game/render`:
-  Pixi application setup, layer management, and renderers by concern.
+  Three.js scene setup, layer management, and renderers by concern.
 - `src/game/mapgen`:
   Deterministic map generation contracts, registry, and algorithm plugins.
 - `src/views`:

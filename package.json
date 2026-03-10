@@ -19,13 +19,14 @@
   },
   "dependencies": {
     "pinia": "^3.0.4",
-    "pixi.js": "^8.16.0",
+    "three": "^0.183.2",
     "vue": "^3.5.25",
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
     "@types/node": "^24.10.1",
+    "@types/three": "^0.183.1",
     "@vitejs/plugin-vue": "^6.0.2",
     "@vue/test-utils": "^2.4.6",
     "@vue/tsconfig": "^0.8.1",

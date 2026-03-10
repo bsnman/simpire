@@ -5,7 +5,7 @@
 - Single source of truth for game session state: Pinia store.
 - Stateless rendering input: renderer receives map/unit/resource data and draws it.
 - Hex grid math is centralized in pure utilities, not embedded across components.
-- Domain-first contracts: gameplay data structures should not depend on Pixi classes.
+- Domain-first contracts: gameplay data structures should not depend on renderer classes.
 - Architecture proposals and implementations for core systems should include modding capability as a first-class consideration.
 
 ## Map Generation Architecture (Modding-Ready)
@@ -74,7 +74,7 @@ Suggested pattern:
 
 ## Renderer Responsibilities
 
-- Own Pixi `Application` and render layers.
+- Own Three.js `WebGLRenderer`, scene camera, and render layers.
 - Convert domain coords to pixel positions through hex layout helpers.
 - Render map first, then terrain features, then resources, then units, then overlays/UI layer.
 - Handle view-only controls such as zoom/pan (do not store these in Pinia game state).
@@ -118,14 +118,15 @@ This keeps rows visually aligned while still storing canonical axial coordinates
 
 - Start simple with full map redraw for correctness.
 - Move to incremental updates when tile count grows.
-- Reuse sprites and containers instead of recreating every frame.
+- Reuse meshes/materials/groups instead of recreating every frame.
 - Chunk/cull rendering for large maps.
 
 ## Migration Note For Existing Code
 
-- Current implementation already uses:
+- Runtime renderer has been migrated from PixiJS to Three.js.
+- Current implementation uses:
 - Hex-keyed map state in `src/stores/currentGame/map.ts`
-- `GameRenderer` + `MapLayer` in `src/game/render`
+- Three-backed `GameRenderer` + `MapLayer` in `src/game/render`
 - Wheel zoom handled in the game view/renderer boundary
 - Deterministic map generation registry in `src/game/mapgen` with plugin-ready algorithm contracts
-- Next migration step is adding incremental rendering and additional layers (units/resources/overlays).
+- Next renderer step is incremental updates and additional layers (units/resources/overlays).
