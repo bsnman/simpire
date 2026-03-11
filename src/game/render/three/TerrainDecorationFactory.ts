@@ -38,6 +38,7 @@ export class TerrainDecorationFactory {
   private readonly loader = new GLTFLoader();
   private readonly templates = new Map<ElevationType, Object3D>();
   private templateLoadPromise: Promise<void> | null = null;
+  private hasLoggedLoadError = false;
 
   async populateTerrainDecorations({
     map,
@@ -51,7 +52,7 @@ export class TerrainDecorationFactory {
       return;
     }
 
-    const scale = Math.max(1, map.tileSize) * 0.55;
+    const scale = Math.max(1, map.tileSize) * 0.75;
 
     for (const key of map.tileKeys) {
       if (isStale()) {
@@ -74,8 +75,10 @@ export class TerrainDecorationFactory {
       const instance = cloneModelTemplate(template);
       const seed = hashHexKey(key);
       const yaw = toUnitRandom(seed) * Math.PI * 2;
-      const jitterX = (toUnitRandom(Math.imul(seed ^ 0x9e3779b9, 1664525)) - 0.5) * map.tileSize * 0.08;
-      const jitterY = (toUnitRandom(Math.imul(seed ^ 0x85ebca6b, 22695477)) - 0.5) * map.tileSize * 0.08;
+      const jitterX =
+        (toUnitRandom(Math.imul(seed ^ 0x9e3779b9, 1664525)) - 0.5) * map.tileSize * 0.08;
+      const jitterY =
+        (toUnitRandom(Math.imul(seed ^ 0x85ebca6b, 22695477)) - 0.5) * map.tileSize * 0.08;
 
       instance.position.set(
         center.x + map.origin.x + jitterX,
@@ -107,7 +110,14 @@ export class TerrainDecorationFactory {
         root.updateMatrixWorld(true);
         this.templates.set(elevation, root);
       }),
-    ).then(() => undefined);
+    )
+      .then(() => undefined)
+      .catch((error: unknown) => {
+        if (!this.hasLoggedLoadError) {
+          this.hasLoggedLoadError = true;
+          console.error('Failed to load terrain decoration models.', error);
+        }
+      });
 
     return this.templateLoadPromise;
   }

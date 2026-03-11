@@ -6,14 +6,14 @@ const GLB_VERSION = 2;
 const JSON_CHUNK_TYPE = 0x4e4f534a;
 const BIN_CHUNK_TYPE = 0x004e4942;
 
-const padTo4 = (buffer) => {
+const padTo4 = (buffer, fillByte = 0x00) => {
   const paddedLength = Math.ceil(buffer.length / 4) * 4;
 
   if (paddedLength === buffer.length) {
     return buffer;
   }
 
-  return Buffer.concat([buffer, Buffer.alloc(paddedLength - buffer.length)]);
+  return Buffer.concat([buffer, Buffer.alloc(paddedLength - buffer.length, fillByte)]);
 };
 
 const vec3MinMax = (positions) => {
@@ -111,7 +111,7 @@ const writeGlb = ({ outputPath, positions, indices, baseColor }) => {
 
   const positionOffset = 0;
   const indexOffset = positionBuffer.length;
-  const binChunk = padTo4(Buffer.concat([positionBuffer, indexBuffer]));
+  const binChunk = padTo4(Buffer.concat([positionBuffer, indexBuffer]), 0x00);
   const { min, max } = vec3MinMax(positions);
   const json = {
     asset: { version: '2.0', generator: 'simpire terrain model generator' },
@@ -178,7 +178,7 @@ const writeGlb = ({ outputPath, positions, indices, baseColor }) => {
     ],
     buffers: [{ byteLength: binChunk.length }],
   };
-  const jsonChunk = padTo4(Buffer.from(JSON.stringify(json), 'utf8'));
+  const jsonChunk = padTo4(Buffer.from(JSON.stringify(json), 'utf8'), 0x20);
   const totalLength = 12 + 8 + jsonChunk.length + 8 + binChunk.length;
   const header = Buffer.alloc(12);
 
@@ -210,20 +210,20 @@ const hillGeometry = buildMoundGeometry({
   segments: 18,
   rings: [
     { radius: 0.95, height: 0.0 },
-    { radius: 0.66, height: 0.18 },
-    { radius: 0.38, height: 0.38 },
+    { radius: 0.66, height: 1.125 },
+    { radius: 0.38, height: 2.175 },
   ],
-  top: { x: 0.05, y: -0.03, height: 0.56 },
+  top: { x: 0.05, y: -0.03, height: 3.375 },
 });
 
 const mountainGeometry = buildMoundGeometry({
   segments: 16,
   rings: [
     { radius: 0.88, height: 0.0 },
-    { radius: 0.52, height: 0.56 },
-    { radius: 0.24, height: 1.12 },
+    { radius: 0.52, height: 3.075 },
+    { radius: 0.24, height: 6.075 },
   ],
-  top: { x: -0.04, y: 0.06, height: 1.54 },
+  top: { x: -0.04, y: 0.06, height: 8.625 },
 });
 
 writeGlb({
