@@ -216,12 +216,12 @@ const mountainGeometry = buildMoundGeometry({
   rings: [
     { radius: 0.92, height: 0.0 },
     { radius: 0.88, height: 0.12 },
-    { radius: 0.68, height: 1.12 },
-    { radius: 0.5, height: 2.05 },
-    { radius: 0.34, height: 2.55 },
-    { radius: 0.2, height: 2.72 },
+    { radius: 0.68, height: 0.56 },
+    { radius: 0.5, height: 1.05 },
+    { radius: 0.34, height: 1.25 },
+    { radius: 0.2, height: 1.32 },
   ],
-  top: { x: -0.01, y: 0.02, height: 2.76 },
+  top: { x: -0.01, y: 0.02, height: 1.36 },
 });
 
 writeGlb({

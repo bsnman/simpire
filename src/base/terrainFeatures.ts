@@ -26,7 +26,7 @@ export const terrainFeatures = {
       gold: 0,
     },
     allowedTerrains: ['grassland', 'plains'] as TileType[],
-    allowedElevations: ['hill'] as ElevationType[],
+    allowedElevations: ['flat', 'hill'] as ElevationType[],
   },
   jungle: {
     type: 'jungle',
@@ -40,7 +40,7 @@ export const terrainFeatures = {
       gold: 1,
     },
     allowedTerrains: ['grassland'] as TileType[],
-    allowedElevations: ['hill'] as ElevationType[],
+    allowedElevations: ['flat', 'hill'] as ElevationType[],
   },
   bamboo_grove: {
     type: 'bamboo_grove',
@@ -54,7 +54,7 @@ export const terrainFeatures = {
       gold: 0,
     },
     allowedTerrains: ['grassland'] as TileType[],
-    allowedElevations: [] as ElevationType[],
+    allowedElevations: ['flat', 'hill'] as ElevationType[],
   },
   reeds: {
     type: 'reeds',
@@ -68,7 +68,7 @@ export const terrainFeatures = {
       gold: 0,
     },
     allowedTerrains: ['coastal_sea', 'grassland'] as TileType[],
-    allowedElevations: [] as ElevationType[],
+    allowedElevations: ['underwater', 'flat'] as ElevationType[],
   },
 } satisfies Record<string, TerrainFeature>;
 

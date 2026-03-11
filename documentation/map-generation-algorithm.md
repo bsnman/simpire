@@ -58,7 +58,7 @@ Implemented in `src/game/mapgen/pipeline/run.ts`.
 ## Step 1: Grid and Subseed Setup
 
 - Build `MapGrid` from deterministic coordinates.
-- Create named subseeds (`macro`, `elevation`, `detail`, `climate`) for stage isolation.
+- Create named subseeds (`macro`, `elevation`, `detail`, `climate`, `terrain-features`) for stage isolation.
 
 ## Step 2: Macro Structure
 
@@ -95,7 +95,13 @@ Important anti-artifact rule: primary-region selection is intentionally kept clo
 
 This separation allows combinations like plains hills or tundra mountains without encoding every combination as a terrain id.
 
-## Step 6: Quality Metrics
+## Step 6: Terrain Feature Placement
+
+- Apply a dedicated terrain-feature pass (`terrain-features.ts`) after biome/elevation classification.
+- Feature assignment is deterministic and stage-isolated via the `terrain-features` subseed stream.
+- This pass assigns `terrainFeatureId` (for example `forest`, `jungle`, `bamboo_grove`, `reeds`) without mutating macro landmass generation.
+
+## Step 7: Quality Metrics
 
 - Compute map quality stats (`metrics.ts`):
   - land ratio
@@ -156,6 +162,7 @@ Current automated coverage includes:
 - deterministic reproducibility (same seed => same map)
 - variation across seeds
 - land ratio bounds
+- deterministic terrain-feature assignment
 - script profile differentiation (`continents` vs `archipelago`)
 - diagnostics harness aggregation
 - fixture replay checks
@@ -181,6 +188,7 @@ All tests run with Vitest (`npm test`).
   - `src/game/mapgen/pipeline/tectonics.ts`
   - `src/game/mapgen/pipeline/detail-noise.ts`
   - `src/game/mapgen/pipeline/terrain-classify.ts`
+  - `src/game/mapgen/pipeline/terrain-features.ts`
   - `src/game/mapgen/pipeline/metrics.ts`
 - Diagnostics and repro:
   - `src/game/mapgen/diagnostics.ts`

@@ -8,6 +8,7 @@ import { calculateMapQualityMetrics, type MapQualityMetrics } from '~/game/mapge
 import { generatePoissonSeeds } from '~/game/mapgen/pipeline/poisson';
 import { createSubseedStreams } from '~/game/mapgen/pipeline/subseeds';
 import { applyTectonicPass } from '~/game/mapgen/pipeline/tectonics';
+import { assignTerrainFeatures } from '~/game/mapgen/pipeline/terrain-features';
 import { assignVoronoiRegions } from '~/game/mapgen/pipeline/voronoi';
 import type { MapTile } from '~/types/map';
 
@@ -161,11 +162,14 @@ export const runGeneratorPipeline = (
     mountainIntensity: config.mountainIntensity,
     noiseAt: (q, r, salt) => subseeds.noiseAt('climate', q, r, salt),
   });
+  const tiles = assignTerrainFeatures(grid, terrain.tiles, {
+    noiseAt: (q, r, salt) => subseeds.noiseAt('terrain-features', q, r, salt),
+  });
 
   const metrics = calculateMapQualityMetrics(grid, detailPass.landMask);
 
   return {
-    tiles: terrain.tiles,
+    tiles,
     metrics,
     debug: {
       seedCount: seeds.length,

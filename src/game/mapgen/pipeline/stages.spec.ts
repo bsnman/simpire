@@ -6,8 +6,10 @@ import { buildMacroMask } from '~/game/mapgen/pipeline/macro-mask';
 import { generatePoissonSeeds } from '~/game/mapgen/pipeline/poisson';
 import { applyTectonicPass } from '~/game/mapgen/pipeline/tectonics';
 import { classifyTerrain } from '~/game/mapgen/pipeline/terrain-classify';
+import { assignTerrainFeatures } from '~/game/mapgen/pipeline/terrain-features';
 import { assignVoronoiRegions } from '~/game/mapgen/pipeline/voronoi';
 import { hashNoiseAt } from '~/game/mapgen/random';
+import { canPlaceTerrainFeatureOnTerrain } from '~/base/terrainFeatures';
 
 const ALLOWED_TERRAINS = new Set([
   'ocean',
@@ -19,6 +21,7 @@ const ALLOWED_TERRAINS = new Set([
   'tundra',
 ]);
 const ALLOWED_ELEVATIONS = new Set(['underwater', 'flat', 'hill', 'mountain']);
+const ALLOWED_TERRAIN_FEATURES = new Set(['forest', 'jungle', 'bamboo_grove', 'reeds']);
 
 const createNoiseAt = (seed: string) => (q: number, r: number, salt?: string) =>
   hashNoiseAt(seed, q, r, salt);
@@ -157,5 +160,76 @@ describe('mapgen pipeline stages', () => {
       expect(ALLOWED_TERRAINS.has(tile.terrain)).toBe(true);
       expect(ALLOWED_ELEVATIONS.has(tile.elevation)).toBe(true);
     }
+  });
+
+  it('assigns deterministic terrain features as a separate tile layer', () => {
+    const grid = createMapGrid(24, 20, () => createRectCoords(24, 20));
+    const seeds = generatePoissonSeeds({
+      width: 24,
+      height: 20,
+      minDistance: 2.8,
+      random: createSeededRandom('feature-seeds'),
+      maxPoints: 34,
+    });
+    const voronoi = assignVoronoiRegions(grid, seeds);
+    const macroMask = buildMacroMask(grid, voronoi, {
+      landRatio: 0.34,
+      primaryRegionTarget: 3,
+      largeMassBias: 0.68,
+      fragmentation: 0.27,
+      chainTendency: 0.36,
+      edgeOceanBias: 0.22,
+      random: createSeededRandom('feature-macro'),
+      noiseAt: createNoiseAt('feature-macro-noise'),
+    });
+    const tectonics = applyTectonicPass(grid, voronoi, macroMask.landMask, {
+      strength: 0.6,
+      random: createSeededRandom('feature-tectonics'),
+      noiseAt: createNoiseAt('feature-tectonics-noise'),
+    });
+    const detail = applyDetailPass(grid, macroMask.landMask, tectonics.elevation, {
+      coastlineRoughness: 0.57,
+      targetLandRatio: 0.34,
+      random: createSeededRandom('feature-detail'),
+      noiseAt: createNoiseAt('feature-detail-noise'),
+      regionScoreByTile: macroMask.regionScoreByTile,
+    });
+    const classified = classifyTerrain(grid, detail.landMask, detail.elevation, {
+      shelfWidth: 2,
+      mountainIntensity: 0.58,
+      noiseAt: createNoiseAt('feature-terrain-noise'),
+    });
+
+    const first = assignTerrainFeatures(grid, classified.tiles, {
+      noiseAt: createNoiseAt('feature-pass-noise'),
+    });
+    const second = assignTerrainFeatures(grid, classified.tiles, {
+      noiseAt: createNoiseAt('feature-pass-noise'),
+    });
+
+    expect(first).toEqual(second);
+    expect(first).toHaveLength(classified.tiles.length);
+
+    let assignedFeatureCount = 0;
+
+    for (let index = 0; index < first.length; index += 1) {
+      const baseTile = classified.tiles[index];
+      const tile = first[index];
+
+      expect(tile?.terrain).toBe(baseTile?.terrain);
+      expect(tile?.elevation).toBe(baseTile?.elevation);
+
+      if (!tile?.terrainFeatureId) {
+        continue;
+      }
+
+      assignedFeatureCount += 1;
+      expect(ALLOWED_TERRAIN_FEATURES.has(tile.terrainFeatureId)).toBe(true);
+      expect(
+        canPlaceTerrainFeatureOnTerrain(tile.terrainFeatureId, tile.terrain, tile.elevation),
+      ).toBe(true);
+    }
+
+    expect(assignedFeatureCount).toBeGreaterThan(0);
   });
 });
