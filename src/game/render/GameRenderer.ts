@@ -111,6 +111,10 @@ export class GameRenderer {
     return (this.getTiltForZoom(this.zoom) * 180) / Math.PI;
   }
 
+  getZoomLevel(): number {
+    return this.zoom;
+  }
+
   zoomByWheel(deltaY: number, screenX: number, screenY: number) {
     if (!this.initialized || !this.sceneSetup) {
       return;
