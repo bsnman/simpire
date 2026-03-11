@@ -194,13 +194,7 @@ const writeGlb = ({ outputPath, positions, indices, baseColor }) => {
   binChunkHeader.writeUInt32LE(binChunk.length, 0);
   binChunkHeader.writeUInt32LE(BIN_CHUNK_TYPE, 4);
 
-  const glb = Buffer.concat([
-    header,
-    jsonChunkHeader,
-    jsonChunk,
-    binChunkHeader,
-    binChunk,
-  ]);
+  const glb = Buffer.concat([header, jsonChunkHeader, jsonChunk, binChunkHeader, binChunk]);
 
   mkdirSync(dirname(outputPath), { recursive: true });
   writeFileSync(outputPath, glb);
@@ -210,20 +204,24 @@ const hillGeometry = buildMoundGeometry({
   segments: 18,
   rings: [
     { radius: 0.95, height: 0.0 },
-    { radius: 0.66, height: 0.5625 },
-    { radius: 0.38, height: 1.0875 },
+    { radius: 0.7, height: 0.46 },
+    { radius: 0.42, height: 0.68 },
+    { radius: 0.24, height: 0.86 },
   ],
-  top: { x: 0.05, y: -0.03, height: 1.6875 },
+  top: { x: 0.01, y: -0.01, height: 0.94 },
 });
 
 const mountainGeometry = buildMoundGeometry({
   segments: 16,
   rings: [
-    { radius: 0.88, height: 0.0 },
-    { radius: 0.52, height: 1.5375 },
-    { radius: 0.24, height: 3.0375 },
+    { radius: 0.92, height: 0.0 },
+    { radius: 0.88, height: 0.12 },
+    { radius: 0.68, height: 1.12 },
+    { radius: 0.5, height: 2.05 },
+    { radius: 0.34, height: 2.55 },
+    { radius: 0.2, height: 2.72 },
   ],
-  top: { x: -0.04, y: 0.06, height: 4.3125 },
+  top: { x: -0.01, y: 0.02, height: 2.76 },
 });
 
 writeGlb({
