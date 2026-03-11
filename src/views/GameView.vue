@@ -58,6 +58,7 @@ const { isEnabled: isMapgenDebugEnabled, includeFullMapData } = storeToRefs(mapg
 const hoveredMapTile = ref<MapTile | null>(null);
 const isLeftDragPanning = ref(false);
 const cameraTiltDegrees = ref(renderer.getTiltDegrees());
+const cameraZoomLevel = ref(renderer.getZoomLevel());
 const mapgenDebugStatus = ref('');
 const mapgenDebugError = ref('');
 
@@ -231,6 +232,7 @@ const onCanvasWheel = (event: CanvasWheelEvent) => {
   const rect = canvasElement.getBoundingClientRect();
   renderer.zoomByWheel(event.deltaY, event.clientX - rect.left, event.clientY - rect.top);
   cameraTiltDegrees.value = renderer.getTiltDegrees();
+  cameraZoomLevel.value = renderer.getZoomLevel();
 };
 
 const onCanvasMouseMove = (event: CanvasMouseEvent) => {
@@ -357,6 +359,7 @@ onMounted(async () => {
 
   await renderer.init(canvasElement);
   cameraTiltDegrees.value = renderer.getTiltDegrees();
+  cameraZoomLevel.value = renderer.getZoomLevel();
   renderer.setHoveredTileChangeHandler((nextHoveredTile) => {
     hoveredMapTile.value = nextHoveredTile?.tile ?? null;
   });
@@ -434,6 +437,7 @@ onUnmounted(() => {
           Directionality: {{ mapgenMetrics.directionalityScore.toFixed(4) }} (axis
           {{ mapgenMetrics.dominantAxis }})
         </p>
+        <p class="mapgen-debug-row">Zoom Level: {{ cameraZoomLevel.toFixed(2) }}x</p>
         <p class="mapgen-debug-row">Camera Tilt: {{ cameraTiltDegrees.toFixed(1) }} deg</p>
         <p class="mapgen-debug-row">Digest: {{ mapgenDigest }}</p>
         <p class="mapgen-debug-row mapgen-debug-row-spaced">Params</p>
