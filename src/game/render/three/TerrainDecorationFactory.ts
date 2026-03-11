@@ -1,10 +1,11 @@
-import { Group, type Object3D } from 'three';
+import { Color, Group, type Material, type Mesh, type Object3D } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
+import { tiles } from '~/base/tiles';
 import { axialToPixel } from '~/game/render/hexMath';
 import type { HexKey } from '~/types/hex';
 import type { ElevationType } from '~/base/elevation';
-import type { GameMap } from '~/types/map';
+import type { GameMap, MapTile } from '~/types/map';
 
 type PopulateTerrainDecorationsOptions = {
   map: GameMap;
@@ -33,10 +34,21 @@ const hashHexKey = (key: HexKey): number => {
 const toUnitRandom = (seed: number): number => seed / 0xffffffff;
 
 const cloneModelTemplate = (template: Object3D): Object3D => template.clone(true);
+const MOUNTAIN_ROCK_TINT = '#7b7f85';
+
+const buildTerrainTint = (tile: MapTile): Color => {
+  if (tile.elevation === 'mountain') {
+    return new Color(MOUNTAIN_ROCK_TINT);
+  }
+
+  const tint = new Color(tiles[tile.terrain].color);
+  return tint.offsetHSL(0, -0.08, -0.08);
+};
 
 export class TerrainDecorationFactory {
   private readonly loader = new GLTFLoader();
   private readonly templates = new Map<ElevationType, Object3D>();
+  private readonly tintedMaterialCache = new Map<Material, Map<string, Material>>();
   private templateLoadPromise: Promise<void> | null = null;
   private hasLoggedLoadError = false;
 
@@ -73,6 +85,7 @@ export class TerrainDecorationFactory {
 
       const center = axialToPixel({ q: tile.q, r: tile.r }, map.tileSize, map.layout);
       const instance = cloneModelTemplate(template);
+      const terrainTint = buildTerrainTint(tile);
       const seed = hashHexKey(key);
       const yaw = toUnitRandom(seed) * Math.PI * 2;
       const jitterX =
@@ -87,8 +100,18 @@ export class TerrainDecorationFactory {
       );
       instance.rotation.set(0, 0, yaw);
       instance.scale.set(scale, scale, scale);
+      this.applyTerrainTint(instance, terrainTint);
       targetGroup.add(instance);
     }
+  }
+
+  destroy() {
+    this.templates.clear();
+    this.tintedMaterialCache.forEach((tintedMaterialsByColor) => {
+      tintedMaterialsByColor.forEach((material) => material.dispose());
+      tintedMaterialsByColor.clear();
+    });
+    this.tintedMaterialCache.clear();
   }
 
   private ensureTemplatesLoaded(): Promise<void> {
@@ -120,5 +143,47 @@ export class TerrainDecorationFactory {
       });
 
     return this.templateLoadPromise;
+  }
+
+  private applyTerrainTint(instance: Object3D, tint: Color) {
+    instance.traverse((node) => {
+      const mesh = node as Mesh;
+
+      if (!mesh.isMesh) {
+        return;
+      }
+
+      if (Array.isArray(mesh.material)) {
+        mesh.material = mesh.material.map((material) => this.getTintedMaterial(material, tint));
+        return;
+      }
+
+      mesh.material = this.getTintedMaterial(mesh.material, tint);
+    });
+  }
+
+  private getTintedMaterial(baseMaterial: Material, tint: Color): Material {
+    const tintKey = tint.getHexString();
+    const tintedMaterialsByColor = this.tintedMaterialCache.get(baseMaterial);
+
+    if (tintedMaterialsByColor?.has(tintKey)) {
+      return tintedMaterialsByColor.get(tintKey) ?? baseMaterial;
+    }
+
+    const tinted = baseMaterial.clone();
+    const tintedWithColor = tinted as Material & { color?: Color };
+
+    if (tintedWithColor.color?.isColor) {
+      tintedWithColor.color.copy(tint);
+    }
+
+    const cache = tintedMaterialsByColor ?? new Map<string, Material>();
+    cache.set(tintKey, tinted);
+
+    if (!tintedMaterialsByColor) {
+      this.tintedMaterialCache.set(baseMaterial, cache);
+    }
+
+    return tinted;
   }
 }

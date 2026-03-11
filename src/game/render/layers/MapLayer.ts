@@ -132,6 +132,7 @@ export class MapLayer {
     this.decorationRenderToken += 1;
     this.group.clear();
     this.tileMeshFactory.destroy();
+    this.terrainDecorationFactory.destroy();
     this.currentMap = null;
     this.hoveredTileKey = null;
     this.hoveredTileChangeHandler = null;
