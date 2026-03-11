@@ -1,4 +1,4 @@
-import { Group, Plane, Quaternion, Raycaster, Vector2, Vector3 } from 'three';
+import { Box3, Group, Plane, Quaternion, Raycaster, Vector2, Vector3 } from 'three';
 
 import type { GameMap } from '~/types/map';
 import { MapLayer, type HoveredTile } from '~/game/render/layers/MapLayer';
@@ -15,9 +15,15 @@ import { createSceneSetup, type ThreeSceneSetup } from '~/game/render/three/scen
 type ArrowKey = 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown';
 
 export class GameRenderer {
+  private static readonly MIN_CAMERA_Z = 1000;
+  private static readonly CAMERA_DEPTH_MARGIN = 300;
+  private static readonly MIN_CAMERA_NEAR = 0.1;
+  private static readonly MIN_CAMERA_FAR = 2000;
+
   private readonly mapLayer = new MapLayer();
   private readonly raycaster = new Raycaster();
   private readonly viewport = new Group();
+  private readonly mapDepthBounds = new Box3();
   private readonly initialZoom = 0.62;
   private readonly minZoom = 0.3;
   private readonly maxZoom = 5;
@@ -73,6 +79,7 @@ export class GameRenderer {
     }
 
     this.mapLayer.render(map);
+    this.updateCameraDepthRange();
   }
 
   setHoveredTileChangeHandler(handler: ((hoveredTile: HoveredTile | null) => void) | null) {
@@ -119,6 +126,7 @@ export class GameRenderer {
 
     const hasZoomAnchor = this.captureZoomAnchorLocalPoint(screenX, screenY);
     this.applyZoomAndTilt(nextZoom);
+    this.updateCameraDepthRange();
 
     if (hasZoomAnchor) {
       this.keepZoomAnchorAtScreenPoint(screenX, screenY);
@@ -232,6 +240,43 @@ export class GameRenderer {
   private applyZoomAndTilt(zoom: number) {
     this.viewport.scale.set(zoom, zoom, 1);
     this.viewport.rotation.set(this.getTiltForZoom(zoom), 0, 0);
+  }
+
+  private updateCameraDepthRange() {
+    if (!this.sceneSetup) {
+      return;
+    }
+
+    this.viewport.updateMatrixWorld(true);
+    this.mapDepthBounds.setFromObject(this.mapLayer.group);
+
+    if (this.mapDepthBounds.isEmpty()) {
+      return;
+    }
+
+    const targetCameraZ = Math.max(
+      GameRenderer.MIN_CAMERA_Z,
+      this.mapDepthBounds.max.z + GameRenderer.CAMERA_DEPTH_MARGIN,
+    );
+
+    if (this.sceneSetup.camera.position.z !== targetCameraZ) {
+      this.sceneSetup.camera.position.z = targetCameraZ;
+      this.sceneSetup.camera.lookAt(0, 0, 0);
+    }
+
+    const far = Math.max(
+      GameRenderer.MIN_CAMERA_FAR,
+      targetCameraZ - this.mapDepthBounds.min.z + GameRenderer.CAMERA_DEPTH_MARGIN,
+    );
+
+    if (
+      this.sceneSetup.camera.near !== GameRenderer.MIN_CAMERA_NEAR ||
+      this.sceneSetup.camera.far !== far
+    ) {
+      this.sceneSetup.camera.near = GameRenderer.MIN_CAMERA_NEAR;
+      this.sceneSetup.camera.far = far;
+      this.sceneSetup.camera.updateProjectionMatrix();
+    }
   }
 
   private getTiltForZoom(zoom: number): number {
