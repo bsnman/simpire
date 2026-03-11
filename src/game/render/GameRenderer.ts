@@ -242,7 +242,7 @@ export class GameRenderer {
   }
 
   private applyZoomAndTilt(zoom: number) {
-    this.viewport.scale.set(zoom, zoom, 1);
+    this.viewport.scale.set(zoom, zoom, zoom);
     this.viewport.rotation.set(this.getTiltForZoom(zoom), 0, 0);
   }
 

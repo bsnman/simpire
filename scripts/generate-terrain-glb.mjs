@@ -210,20 +210,20 @@ const hillGeometry = buildMoundGeometry({
   segments: 18,
   rings: [
     { radius: 0.95, height: 0.0 },
-    { radius: 0.66, height: 1.125 },
-    { radius: 0.38, height: 2.175 },
+    { radius: 0.66, height: 0.5625 },
+    { radius: 0.38, height: 1.0875 },
   ],
-  top: { x: 0.05, y: -0.03, height: 3.375 },
+  top: { x: 0.05, y: -0.03, height: 1.6875 },
 });
 
 const mountainGeometry = buildMoundGeometry({
   segments: 16,
   rings: [
     { radius: 0.88, height: 0.0 },
-    { radius: 0.52, height: 3.075 },
-    { radius: 0.24, height: 6.075 },
+    { radius: 0.52, height: 1.5375 },
+    { radius: 0.24, height: 3.0375 },
   ],
-  top: { x: -0.04, y: 0.06, height: 8.625 },
+  top: { x: -0.04, y: 0.06, height: 4.3125 },
 });
 
 writeGlb({
