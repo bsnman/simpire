@@ -4,6 +4,7 @@ import { tiles } from '~/base/tiles';
 import { fromHexKey, type HexKey } from '~/types/hex';
 import type { GameMap, MapTile } from '~/types/map';
 import { axialToPixel } from '~/game/render/hexMath';
+import { TerrainDecorationFactory } from '~/game/render/three/TerrainDecorationFactory';
 import { HexTileMeshFactory } from '~/game/render/three/HexTileMeshFactory';
 import { pickHexKeyAtScreenPoint } from '~/game/render/three/raycast';
 
@@ -27,10 +28,12 @@ export class MapLayer {
   public readonly group = new Group();
 
   private readonly tileMeshFactory = new HexTileMeshFactory();
+  private readonly terrainDecorationFactory = new TerrainDecorationFactory();
   private currentMap: GameMap | null = null;
   private hoveredTileKey: HexKey | null = null;
   private hoveredTileChangeHandler: ((hoveredTile: HoveredTile | null) => void) | null = null;
   private raycastTargets: Mesh[] = [];
+  private decorationRenderToken = 0;
 
   constructor() {
     this.group.name = 'map-layer';
@@ -53,6 +56,18 @@ export class MapLayer {
       this.group.add(mesh);
       this.raycastTargets.push(mesh);
     }
+
+    const decorationGroup = new Group();
+    decorationGroup.name = 'terrain-decoration-layer';
+    this.group.add(decorationGroup);
+
+    const renderToken = ++this.decorationRenderToken;
+
+    void this.terrainDecorationFactory.populateTerrainDecorations({
+      map,
+      targetGroup: decorationGroup,
+      isStale: () => renderToken !== this.decorationRenderToken,
+    });
 
     if (this.hoveredTileKey) {
       const hoveredTile = map.tilesByKey[this.hoveredTileKey];
@@ -114,6 +129,7 @@ export class MapLayer {
   }
 
   destroy() {
+    this.decorationRenderToken += 1;
     this.group.clear();
     this.tileMeshFactory.destroy();
     this.currentMap = null;
