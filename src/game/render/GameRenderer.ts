@@ -28,8 +28,8 @@ export class GameRenderer {
   private readonly minZoom = 0.3;
   private readonly maxZoom = 5;
   private readonly tiltStartZoom = this.initialZoom;
-  private readonly tiltMaxZoom = 2.5;
-  private readonly maxTiltRadians = (42 * Math.PI) / 180;
+  private readonly tiltMaxZoom = 3.5;
+  private readonly maxTiltRadians = (52 * Math.PI) / 180;
   private readonly zoomAnchorNdc = new Vector2();
   private readonly zoomAnchorPlane = new Plane();
   private readonly zoomAnchorPlaneNormal = new Vector3();
