@@ -11,7 +11,7 @@ import { createRectCoords } from '~/game/mapgen/helpers';
 import { hashNoiseAt, createSeededRandom } from '~/game/mapgen/random';
 
 const DEFAULT_LAYOUT = 'pointy' as const;
-const DEFAULT_TILE_SIZE = 24;
+const DEFAULT_TILE_SIZE = 64;
 const DEFAULT_ORIGIN = {
   x: 80,
   y: 80,

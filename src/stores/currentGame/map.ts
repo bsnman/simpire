@@ -30,7 +30,7 @@ const DEFAULT_MAP_REQUEST: MapGenerationRequest = {
   } satisfies ContinentsParams,
   mapId: 'debug-map-001',
   layout: 'pointy',
-  tileSize: 24,
+  tileSize: 30,
   origin: { x: 80, y: 80 },
 };
 

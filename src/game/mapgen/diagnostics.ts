@@ -30,7 +30,7 @@ export type MapgenDiagnosticsReport = {
 };
 
 const DEFAULT_LAYOUT: MapGenerationRequest['layout'] = 'pointy';
-const DEFAULT_TILE_SIZE = 24;
+const DEFAULT_TILE_SIZE = 30;
 const DEFAULT_ORIGIN = { x: 80, y: 80 };
 
 const tileArrayFromMap = (map: ReturnType<typeof generateMap>): MapTile[] => {

@@ -47,7 +47,7 @@ const DEFAULT_MAP_SIZE: MapSizeOption = MAP_SIZE_OPTIONS[1] ?? {
 
 const DEFAULT_MAP_SHAPE: Pick<MapGenerationRequest, 'layout' | 'tileSize' | 'origin'> = {
   layout: 'pointy',
-  tileSize: 24,
+  tileSize: 30,
   origin: { x: 80, y: 80 },
 };
 

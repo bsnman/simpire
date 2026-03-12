@@ -15,6 +15,7 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 const OUTPUT_PATH = resolve('public/models/terrain/hill-v2.glb');
 const SEGMENTS = 96;
 const RINGS = 30;
+const BASE_CAP_DEPTH = -0.22;
 
 class NodeFileReader {
   result = null;
@@ -197,6 +198,18 @@ const buildHillGeometry = () => {
       indices.push(innerCurrent, outerCurrent, outerNext);
       indices.push(innerCurrent, outerNext, innerNext);
     }
+  }
+
+  const outerOffset = ringOffsets[RINGS];
+  const baseCenterIndex = positions.length / 3;
+  positions.push(0, 0, BASE_CAP_DEPTH);
+
+  for (let segment = 0; segment < SEGMENTS; segment += 1) {
+    const next = (segment + 1) % SEGMENTS;
+    const outerCurrent = outerOffset + segment;
+    const outerNext = outerOffset + next;
+    // Flip winding so underside normals face downward.
+    indices.push(outerNext, outerCurrent, baseCenterIndex);
   }
 
   const geometry = new BufferGeometry();

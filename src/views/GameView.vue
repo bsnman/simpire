@@ -57,6 +57,10 @@ const { currentMap, lastGenerationRequest } = storeToRefs(mapStore);
 const { isEnabled: isMapgenDebugEnabled, includeFullMapData } = storeToRefs(mapgenDebugStore);
 const hoveredMapTile = ref<MapTile | null>(null);
 const isLeftDragPanning = ref(false);
+const isLeftDragOrbiting = ref(false);
+const isRightDragPanning = ref(false);
+const useModelDebugControls = ref(false);
+const showDebugAxes = ref(false);
 const cameraTiltDegrees = ref(renderer.getTiltDegrees());
 const cameraZoomLevel = ref(renderer.getZoomLevel());
 const mapgenDebugStatus = ref('');
@@ -220,6 +224,20 @@ const setIncludeFullMapData = (event: { target: unknown }) => {
   mapgenDebugStore.setIncludeFullMapData(target?.checked === true);
 };
 
+const setUseModelDebugControls = (event: { target: unknown }) => {
+  const target = event.target as { checked?: unknown } | null;
+  const isEnabled = target?.checked === true;
+  useModelDebugControls.value = isEnabled;
+  renderer.setDebugCameraControlsEnabled(isEnabled);
+};
+
+const setShowDebugAxes = (event: { target: unknown }) => {
+  const target = event.target as { checked?: unknown } | null;
+  const isEnabled = target?.checked === true;
+  showDebugAxes.value = isEnabled;
+  renderer.setDebugAxesVisible(isEnabled);
+};
+
 const onCanvasWheel = (event: CanvasWheelEvent) => {
   event.preventDefault();
 
@@ -246,7 +264,7 @@ const onCanvasMouseMove = (event: CanvasMouseEvent) => {
   const pointerX = event.clientX - rect.left;
   const pointerY = event.clientY - rect.top;
 
-  if (isLeftDragPanning.value) {
+  if (isLeftDragPanning.value || isLeftDragOrbiting.value || isRightDragPanning.value) {
     return;
   }
 
@@ -272,6 +290,13 @@ const onCanvasMouseDown = (event: CanvasMouseEvent) => {
 
   if (event.button === 2) {
     event.preventDefault();
+
+    if (isMapgenDebugEnabled.value && useModelDebugControls.value) {
+      isRightDragPanning.value = true;
+      renderer.clearEdgePointerPosition();
+      return;
+    }
+
     canvasElement.requestPointerLock();
     return;
   }
@@ -281,13 +306,17 @@ const onCanvasMouseDown = (event: CanvasMouseEvent) => {
   }
 
   event.preventDefault();
-  isLeftDragPanning.value = true;
+  const useOrbitGesture = isMapgenDebugEnabled.value && useModelDebugControls.value;
+  isLeftDragOrbiting.value = useOrbitGesture;
+  isLeftDragPanning.value = !useOrbitGesture;
   renderer.clearEdgePointerPosition();
 };
 
 const onPointerLockChange = () => {
   const isLocked = globalThis.document.pointerLockElement === canvasRef.value;
   isLeftDragPanning.value = false;
+  isLeftDragOrbiting.value = false;
+  isRightDragPanning.value = false;
   renderer.setPointerLockActive(isLocked);
 };
 
@@ -301,7 +330,13 @@ const onWindowMouseMove = (event: CanvasMouseEvent) => {
     return;
   }
 
-  if (!isLeftDragPanning.value) {
+  if (isLeftDragOrbiting.value) {
+    renderer.orbitByDragMovement(event.movementX, event.movementY);
+    cameraTiltDegrees.value = renderer.getTiltDegrees();
+    return;
+  }
+
+  if (!isLeftDragPanning.value && !isRightDragPanning.value) {
     return;
   }
 
@@ -309,11 +344,17 @@ const onWindowMouseMove = (event: CanvasMouseEvent) => {
 };
 
 const onWindowMouseUp = (event: CanvasMouseEvent) => {
-  if (event.button !== 0) {
+  if (event.button !== 0 && event.button !== 2) {
     return;
   }
 
-  isLeftDragPanning.value = false;
+  if (event.button === 0) {
+    isLeftDragPanning.value = false;
+    isLeftDragOrbiting.value = false;
+    return;
+  }
+
+  isRightDragPanning.value = false;
 };
 
 const onWindowKeyDown = (event: CanvasKeyboardEvent) => {
@@ -345,10 +386,39 @@ const onWindowKeyUp = (event: CanvasKeyboardEvent) => {
 
 const onWindowBlur = () => {
   isLeftDragPanning.value = false;
+  isLeftDragOrbiting.value = false;
+  isRightDragPanning.value = false;
   renderer.clearEdgePointerPosition();
   renderer.clearArrowKeyPan();
   renderer.clearHoveredTile();
 };
+
+watch(isMapgenDebugEnabled, (isEnabled) => {
+  if (isEnabled) {
+    return;
+  }
+
+  useModelDebugControls.value = false;
+  renderer.setDebugCameraControlsEnabled(false);
+  showDebugAxes.value = false;
+  isLeftDragOrbiting.value = false;
+  isRightDragPanning.value = false;
+  renderer.resetDebugOrbit();
+  renderer.setDebugAxesVisible(false);
+  cameraTiltDegrees.value = renderer.getTiltDegrees();
+});
+
+watch(useModelDebugControls, (isEnabled) => {
+  if (isEnabled) {
+    return;
+  }
+
+  renderer.setDebugCameraControlsEnabled(false);
+  isLeftDragOrbiting.value = false;
+  isRightDragPanning.value = false;
+  renderer.resetDebugOrbit();
+  cameraTiltDegrees.value = renderer.getTiltDegrees();
+});
 
 onMounted(async () => {
   const canvasElement = canvasRef.value;
@@ -394,7 +464,12 @@ onUnmounted(() => {
   globalThis.window.removeEventListener('keyup', onWindowKeyUp);
   globalThis.window.removeEventListener('blur', onWindowBlur);
   isLeftDragPanning.value = false;
+  isLeftDragOrbiting.value = false;
+  isRightDragPanning.value = false;
+  showDebugAxes.value = false;
+  renderer.setDebugCameraControlsEnabled(false);
   renderer.setPointerLockActive(false);
+  renderer.setDebugAxesVisible(false);
   renderer.clearEdgePointerPosition();
   renderer.clearArrowKeyPan();
   renderer.clearHoveredTile();
@@ -439,6 +514,14 @@ onUnmounted(() => {
         </p>
         <p class="mapgen-debug-row">Zoom Level: {{ cameraZoomLevel.toFixed(2) }}x</p>
         <p class="mapgen-debug-row">Camera Tilt: {{ cameraTiltDegrees.toFixed(1) }} deg</p>
+        <p class="mapgen-debug-row">
+          Controls:
+          {{
+            useModelDebugControls
+              ? 'Model Debug (Left rotate, Right drag pan, Wheel zoom)'
+              : 'Default Game (Left drag pan, Right pointer-lock pan, Wheel zoom)'
+          }}
+        </p>
         <p class="mapgen-debug-row">Digest: {{ mapgenDigest }}</p>
         <p class="mapgen-debug-row mapgen-debug-row-spaced">Params</p>
         <pre class="mapgen-debug-json">{{ mapgenParamsJson }}</pre>
@@ -446,6 +529,18 @@ onUnmounted(() => {
         <label class="mapgen-debug-checkbox-row">
           <input type="checkbox" :checked="includeFullMapData" @change="setIncludeFullMapData" />
           Include full map tile data when copying payload
+        </label>
+        <label class="mapgen-debug-checkbox-row">
+          <input
+            type="checkbox"
+            :checked="useModelDebugControls"
+            @change="setUseModelDebugControls"
+          />
+          Use Model Debug camera controls
+        </label>
+        <label class="mapgen-debug-checkbox-row">
+          <input type="checkbox" :checked="showDebugAxes" @change="setShowDebugAxes" />
+          Show XYZ axis helper
         </label>
 
         <div class="mapgen-debug-actions">

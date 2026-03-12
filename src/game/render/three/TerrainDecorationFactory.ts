@@ -14,11 +14,11 @@ type PopulateTerrainDecorationsOptions = {
 };
 
 const TERRAIN_MODEL_PATHS: Partial<Record<ElevationType, string>> = {
-  hill: '/models/terrain/hill-v2.glb',
+  hill: '/models/terrain/hill.glb',
   mountain: '/models/terrain/mountain.glb',
 };
 
-const DECORATION_Z_OFFSET = 0.08;
+const DECORATION_Z_OFFSET = 1;
 
 const hashHexKey = (key: HexKey): number => {
   let hash = 2166136261;
