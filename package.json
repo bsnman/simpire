@@ -12,6 +12,7 @@
     "mapgen:diagnostics": "vite-node scripts/mapgen-diagnostics.ts",
     "mapgen:repro": "vite-node scripts/mapgen-repro.ts",
     "terrain:models": "node scripts/generate-terrain-glb.mjs",
+    "terrain:hill-v2": "node scripts/generate-hill-v2-glb.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

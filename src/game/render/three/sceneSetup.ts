@@ -1,8 +1,13 @@
-import { OrthographicCamera, Scene, WebGLRenderer } from 'three';
+import { DirectionalLight, HemisphereLight, OrthographicCamera, Scene, WebGLRenderer } from 'three';
 
 const BACKGROUND_COLOR = 0x101418;
 const DEFAULT_DEVICE_PIXEL_RATIO = 1;
 const MAX_DEVICE_PIXEL_RATIO = 2;
+const SKY_LIGHT_COLOR = 0xcddcf5;
+const GROUND_BOUNCE_COLOR = 0x3d3128;
+const SUN_LIGHT_COLOR = 0xfff3d8;
+const HEMISPHERE_INTENSITY = 0.68;
+const SUNLIGHT_INTENSITY = 0.82;
 
 type ViewportSize = {
   width: number;
@@ -46,6 +51,21 @@ export const createSceneSetup = (canvas: HTMLCanvasElement): ThreeSceneSetup => 
   });
 
   renderer.setClearColor(BACKGROUND_COLOR, 1);
+
+  const hemisphereLight = new HemisphereLight(
+    SKY_LIGHT_COLOR,
+    GROUND_BOUNCE_COLOR,
+    HEMISPHERE_INTENSITY,
+  );
+  hemisphereLight.position.set(0, 0, 1200);
+  scene.add(hemisphereLight);
+
+  const sunLight = new DirectionalLight(SUN_LIGHT_COLOR, SUNLIGHT_INTENSITY);
+  sunLight.position.set(-460, -380, 920);
+  sunLight.target.position.set(0, 0, 0);
+  scene.add(sunLight);
+  scene.add(sunLight.target);
+
   camera.position.set(0, 0, 1000);
   camera.lookAt(0, 0, 0);
 

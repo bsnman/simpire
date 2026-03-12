@@ -14,7 +14,7 @@ type PopulateTerrainDecorationsOptions = {
 };
 
 const TERRAIN_MODEL_PATHS: Partial<Record<ElevationType, string>> = {
-  hill: '/models/terrain/hill.glb',
+  hill: '/models/terrain/hill-v2.glb',
   mountain: '/models/terrain/mountain.glb',
 };
 
