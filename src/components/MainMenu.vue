@@ -9,6 +9,10 @@ const router = useRouter();
 const startGame = () => {
   router.push('/create-game');
 };
+
+const openModelDebug = () => {
+  router.push('/model-debug/');
+};
 </script>
 
 <template>
@@ -24,6 +28,7 @@ const startGame = () => {
 
         <div class="menu-actions">
           <GButton class="menu-button menu-button-primary" @click="startGame">Start Game</GButton>
+          <GButton class="menu-button" @click="openModelDebug">Model Debug</GButton>
           <GButton class="menu-button">Load Game</GButton>
           <GButton class="menu-button">Options</GButton>
           <GButton class="menu-button">Exit</GButton>
@@ -132,6 +137,10 @@ const startGame = () => {
 
 .menu-button:nth-child(4) {
   animation-delay: 330ms;
+}
+
+.menu-button:nth-child(5) {
+  animation-delay: 410ms;
 }
 
 .menu-button-primary {

@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import HomeView from '~/views/HomeView.vue';
 import CreateGameView from '~/views/CreateGameView.vue';
 import GameView from '~/views/GameView.vue';
+import ModelDebugView from '~/views/ModelDebugView.vue';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -26,6 +27,11 @@ const router = createRouter({
       name: 'game',
       component: GameView,
       props: true,
+    },
+    {
+      path: '/model-debug/',
+      name: 'model-debug',
+      component: ModelDebugView,
     },
   ],
 });

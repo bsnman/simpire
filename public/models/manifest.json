@@ -1,0 +1,7 @@
+{
+  "models": [
+    "/models/terrain/hill-v2.glb",
+    "/models/terrain/hill.glb",
+    "/models/terrain/mountain.glb"
+  ]
+}
