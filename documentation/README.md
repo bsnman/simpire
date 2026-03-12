@@ -23,3 +23,4 @@ Purpose: this folder is the canonical context for implementation work in this re
 ## Implementation Plans
 
 - `documentation/threejs-migration-implementation-plan.md`: phased migration plan from PixiJS renderer to Three.js renderer.
+- `documentation/map-render-layer-separation-implementation-plan.md`: phased plan for splitting map visuals into configurable tile color, hex outline, and elevation layers.
