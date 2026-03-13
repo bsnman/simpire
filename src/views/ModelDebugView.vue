@@ -476,9 +476,18 @@ watch(modelScale, () => {
   applyModelScale();
 });
 
-watch([hemisphereLightIntensity, directionalLightIntensity, directionalLightX, directionalLightY, directionalLightZ], () => {
-  applyLightingSettings();
-});
+watch(
+  [
+    hemisphereLightIntensity,
+    directionalLightIntensity,
+    directionalLightX,
+    directionalLightY,
+    directionalLightZ,
+  ],
+  () => {
+    applyLightingSettings();
+  },
+);
 
 onMounted(async () => {
   initScene();

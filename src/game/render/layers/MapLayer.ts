@@ -45,7 +45,8 @@ export class MapLayer {
   private readonly interactionLayer: MapInteractionLayer;
 
   private currentMap: GameMap | null = null;
-  private currentRenderConfig: MapRenderConfig = normalizeMapRenderConfig(DEFAULT_MAP_RENDER_CONFIG);
+  private currentRenderConfig: MapRenderConfig =
+    normalizeMapRenderConfig(DEFAULT_MAP_RENDER_CONFIG);
   private hoveredTileKey: HexKey | null = null;
   private hoveredTileChangeHandler: ((hoveredTile: HoveredTile | null) => void) | null = null;
 

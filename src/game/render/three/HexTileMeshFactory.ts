@@ -8,9 +8,7 @@ import {
 } from 'three';
 
 import type { HexKey, HexLayout } from '~/types/hex';
-import {
-  buildMapTileColorObjectName,
-} from '~/game/render/layers/mapLayerObjectNames';
+import { buildMapTileColorObjectName } from '~/game/render/layers/mapLayerObjectNames';
 import {
   buildHexGeometryCacheKey,
   createHexShapeGeometry,

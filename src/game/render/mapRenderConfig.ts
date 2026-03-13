@@ -67,8 +67,7 @@ const normalizeElevationLayerConfig = (
 ): ElevationLayerConfig => ({
   enabled: config?.enabled ?? DEFAULT_MAP_RENDER_CONFIG.elevation.enabled,
   zOffset: config?.zOffset ?? DEFAULT_MAP_RENDER_CONFIG.elevation.zOffset,
-  scaleMultiplier:
-    config?.scaleMultiplier ?? DEFAULT_MAP_RENDER_CONFIG.elevation.scaleMultiplier,
+  scaleMultiplier: config?.scaleMultiplier ?? DEFAULT_MAP_RENDER_CONFIG.elevation.scaleMultiplier,
 });
 
 export const normalizeMapRenderConfig = (

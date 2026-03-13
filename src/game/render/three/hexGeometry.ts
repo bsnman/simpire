@@ -5,10 +5,8 @@ import { hexCornerPoints } from '~/game/render/hexMath';
 
 export type HexGeometryCacheKey = `${HexLayout}:${number}`;
 
-export const buildHexGeometryCacheKey = (
-  layout: HexLayout,
-  size: number,
-): HexGeometryCacheKey => `${layout}:${size}`;
+export const buildHexGeometryCacheKey = (layout: HexLayout, size: number): HexGeometryCacheKey =>
+  `${layout}:${size}`;
 
 export const createHexShapeGeometry = (size: number, layout: HexLayout): ShapeGeometry => {
   const points = hexCornerPoints(0, 0, size, layout);

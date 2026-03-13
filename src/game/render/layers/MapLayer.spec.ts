@@ -2,7 +2,10 @@ import { Group, OrthographicCamera, Raycaster } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 
 import { MapLayer } from '~/game/render/layers/MapLayer';
-import { TileElevationLayer, type TerrainDecorationFactoryLike } from '~/game/render/layers/TileElevationLayer';
+import {
+  TileElevationLayer,
+  type TerrainDecorationFactoryLike,
+} from '~/game/render/layers/TileElevationLayer';
 import {
   MAP_ELEVATION_LAYER_GROUP_NAME,
   MAP_HEX_OUTLINE_LAYER_GROUP_NAME,
@@ -19,7 +22,11 @@ import type { GameMap } from '~/types/map';
 
 class FakeTerrainDecorationFactory implements TerrainDecorationFactoryLike {
   public readonly populateTerrainDecorations = vi.fn(
-    async ({ map, targetGroup, isStale }: Parameters<TerrainDecorationFactoryLike['populateTerrainDecorations']>[0]) => {
+    async ({
+      map,
+      targetGroup,
+      isStale,
+    }: Parameters<TerrainDecorationFactoryLike['populateTerrainDecorations']>[0]) => {
       if (isStale()) {
         return;
       }

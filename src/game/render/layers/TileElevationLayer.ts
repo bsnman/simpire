@@ -16,7 +16,9 @@ export class TileElevationLayer {
   private readonly terrainDecorationFactory: TerrainDecorationFactoryLike;
   private decorationRenderToken = 0;
 
-  constructor(terrainDecorationFactory: TerrainDecorationFactoryLike = new TerrainDecorationFactory()) {
+  constructor(
+    terrainDecorationFactory: TerrainDecorationFactoryLike = new TerrainDecorationFactory(),
+  ) {
     this.terrainDecorationFactory = terrainDecorationFactory;
     this.group.name = MAP_ELEVATION_LAYER_GROUP_NAME;
   }

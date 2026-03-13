@@ -138,14 +138,20 @@ const hillHeight = (x, y) => {
   const detailNoise = fbm(x * 4.4, y * 4.4, 3, 29) * 0.07;
 
   const angle = Math.atan2(y, x);
-  const gully = -Math.pow(Math.abs(Math.sin(angle * 3 + fbm(x * 2.2, y * 2.2, 2, 47) * 1.8)), 1.9) *
-    0.06;
+  const gully =
+    -Math.pow(Math.abs(Math.sin(angle * 3 + fbm(x * 2.2, y * 2.2, 2, 47) * 1.8)), 1.9) * 0.06;
 
   const rimFade = 1 - smoothstep(0.78, 1, radial);
   const noiseMask = Math.pow(1 - radial, 1.15);
 
   const height =
-    (baseDome + shoulder + lobeA + lobeB + lobeC + macroNoise * noiseMask + detailNoise * noiseMask +
+    (baseDome +
+      shoulder +
+      lobeA +
+      lobeB +
+      lobeC +
+      macroNoise * noiseMask +
+      detailNoise * noiseMask +
       gully * noiseMask) *
     rimFade;
 

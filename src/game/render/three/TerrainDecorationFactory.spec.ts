@@ -130,7 +130,9 @@ describe('TerrainDecorationFactory', () => {
 
     factory.destroy();
     pendingLoads.get('/models/terrain/hill.glb')?.(createLoaderResponse(hillResources.scene));
-    pendingLoads.get('/models/terrain/mountain.glb')?.(createLoaderResponse(mountainResources.scene));
+    pendingLoads.get('/models/terrain/mountain.glb')?.(
+      createLoaderResponse(mountainResources.scene),
+    );
     await populatePromise;
 
     expect(targetGroup.children).toHaveLength(0);

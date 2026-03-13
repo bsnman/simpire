@@ -57,10 +57,7 @@ const createResourceDisposalTracker = (): ResourceDisposalTracker => ({
   textures: new Set<Texture>(),
 });
 
-const disposeMaterialResources = (
-  material: Material,
-  disposalTracker: ResourceDisposalTracker,
-) => {
+const disposeMaterialResources = (material: Material, disposalTracker: ResourceDisposalTracker) => {
   if (disposalTracker.materials.has(material)) {
     return;
   }
@@ -81,10 +78,7 @@ const disposeMaterialResources = (
   material.dispose();
 };
 
-const disposeObject3DResources = (
-  object: Object3D,
-  disposalTracker: ResourceDisposalTracker,
-) => {
+const disposeObject3DResources = (object: Object3D, disposalTracker: ResourceDisposalTracker) => {
   object.traverse((node) => {
     const mesh = node as Mesh;
 
@@ -232,7 +226,9 @@ export class TerrainDecorationFactory {
           (result): result is PromiseRejectedResult => result.status === 'rejected',
         );
         const shouldDisposeLoadedTemplates =
-          this.destroyed || loadToken !== this.templateLifetimeToken || Boolean(firstRejectedResult);
+          this.destroyed ||
+          loadToken !== this.templateLifetimeToken ||
+          Boolean(firstRejectedResult);
 
         if (shouldDisposeLoadedTemplates) {
           const disposalTracker = createResourceDisposalTracker();
@@ -250,10 +246,7 @@ export class TerrainDecorationFactory {
         if (firstRejectedResult) {
           if (!this.hasLoggedLoadError) {
             this.hasLoggedLoadError = true;
-            console.error(
-              'Failed to load terrain decoration models.',
-              firstRejectedResult.reason,
-            );
+            console.error('Failed to load terrain decoration models.', firstRejectedResult.reason);
           }
           return;
         }
