@@ -12,10 +12,9 @@ import {
 } from 'three';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 
-const OUTPUT_PATH = resolve('public/models/terrain/hill-v2.glb');
-const SEGMENTS = 96;
-const RINGS = 30;
-const BASE_CAP_DEPTH = -0.22;
+const OUTPUT_DIRECTORY = resolve('public/models/terrain');
+const SEGMENTS = 112;
+const RINGS = 36;
 
 class NodeFileReader {
   result = null;
@@ -61,8 +60,22 @@ const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const fract = (value) => value - Math.floor(value);
 
 const smoothstep = (edge0, edge1, x) => {
+  if (edge0 === edge1) {
+    return x >= edge1 ? 1 : 0;
+  }
+
   const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
   return t * t * (3 - 2 * t);
+};
+
+const rotate = (x, y, angle) => {
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+
+  return {
+    x: x * cos - y * sin,
+    y: x * sin + y * cos,
+  };
 };
 
 const hash2 = (x, y, seed) => {
@@ -86,7 +99,6 @@ const valueNoise = (x, y, seed) => {
 
   const nx0 = n00 + (n10 - n00) * sx;
   const nx1 = n01 + (n11 - n01) * sx;
-
   return nx0 + (nx1 - nx0) * sy;
 };
 
@@ -97,14 +109,12 @@ const fbm = (x, y, octaves, seed) => {
   let normalization = 0;
 
   for (let octave = 0; octave < octaves; octave += 1) {
-    // Rotate each octave a little to avoid directional streaks.
-    const angle = (Math.PI / 6) * octave;
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-    const rx = x * cos - y * sin;
-    const ry = x * sin + y * cos;
+    const angle = (Math.PI / 5) * octave;
+    const rotated = rotate(x, y, angle);
 
-    sum += (valueNoise(rx * frequency, ry * frequency, seed + octave * 17) * 2 - 1) * amplitude;
+    sum +=
+      (valueNoise(rotated.x * frequency, rotated.y * frequency, seed + octave * 17) * 2 - 1) *
+      amplitude;
     normalization += amplitude;
     amplitude *= 0.5;
     frequency *= 2;
@@ -113,52 +123,16 @@ const fbm = (x, y, octaves, seed) => {
   return normalization > 0 ? sum / normalization : 0;
 };
 
-const gaussian = (x, y, cx, cy, sigma) => {
+const gaussian = (x, y, cx, cy, sigmaX, sigmaY = sigmaX) => {
   const dx = x - cx;
   const dy = y - cy;
-  const exponent = -((dx * dx + dy * dy) / (2 * sigma * sigma));
+  const exponent = -((dx * dx) / (2 * sigmaX * sigmaX) + (dy * dy) / (2 * sigmaY * sigmaY));
   return Math.exp(exponent);
 };
 
-const hillHeight = (x, y) => {
-  const radial = Math.hypot(x, y);
+const rimFade = (radius, start = 0.82) => 1 - smoothstep(start, 1, radius);
 
-  if (radial >= 1) {
-    return 0;
-  }
-
-  const baseDome = Math.pow(1 - radial, 1.45) * 0.95;
-  const shoulder = smoothstep(1, 0.28, radial) * 0.26;
-
-  const lobeA = gaussian(x, y, -0.26, 0.14, 0.34) * 0.22;
-  const lobeB = gaussian(x, y, 0.22, -0.2, 0.3) * 0.18;
-  const lobeC = gaussian(x, y, 0.12, 0.22, 0.25) * 0.12;
-
-  const macroNoise = fbm(x * 1.9, y * 1.9, 4, 11) * 0.17;
-  const detailNoise = fbm(x * 4.4, y * 4.4, 3, 29) * 0.07;
-
-  const angle = Math.atan2(y, x);
-  const gully =
-    -Math.pow(Math.abs(Math.sin(angle * 3 + fbm(x * 2.2, y * 2.2, 2, 47) * 1.8)), 1.9) * 0.06;
-
-  const rimFade = 1 - smoothstep(0.78, 1, radial);
-  const noiseMask = Math.pow(1 - radial, 1.15);
-
-  const height =
-    (baseDome +
-      shoulder +
-      lobeA +
-      lobeB +
-      lobeC +
-      macroNoise * noiseMask +
-      detailNoise * noiseMask +
-      gully * noiseMask) *
-    rimFade;
-
-  return Math.max(0, height);
-};
-
-const buildHillGeometry = () => {
+const buildOpenHillGeometry = (heightAt) => {
   const positions = [];
   const indices = [];
   const ringOffsets = [];
@@ -168,8 +142,7 @@ const buildHillGeometry = () => {
     ringOffsets.push(positions.length / 3);
 
     if (ring === 0) {
-      const centerHeight = hillHeight(0, 0);
-      positions.push(0, 0, centerHeight);
+      positions.push(0, 0, heightAt(0, 0, 0, 0));
       continue;
     }
 
@@ -177,7 +150,7 @@ const buildHillGeometry = () => {
       const angle = (segment / SEGMENTS) * Math.PI * 2;
       const x = Math.cos(angle) * radius;
       const y = Math.sin(angle) * radius;
-      positions.push(x, y, hillHeight(x, y));
+      positions.push(x, y, heightAt(x, y, radius, angle));
     }
   }
 
@@ -206,48 +179,91 @@ const buildHillGeometry = () => {
     }
   }
 
-  const outerOffset = ringOffsets[RINGS];
-  const baseRingOffset = positions.length / 3;
-
-  // Duplicate the rim for the underside cap so the top surface keeps its upward normals.
-  for (let segment = 0; segment < SEGMENTS; segment += 1) {
-    const outerVertexOffset = (outerOffset + segment) * 3;
-    positions.push(
-      positions[outerVertexOffset],
-      positions[outerVertexOffset + 1],
-      positions[outerVertexOffset + 2],
-    );
-  }
-
-  const baseCenterIndex = positions.length / 3;
-  positions.push(0, 0, BASE_CAP_DEPTH);
-
-  for (let segment = 0; segment < SEGMENTS; segment += 1) {
-    const next = (segment + 1) % SEGMENTS;
-    const outerCurrent = baseRingOffset + segment;
-    const outerNext = baseRingOffset + next;
-    // Flip winding so underside normals face downward.
-    indices.push(outerNext, outerCurrent, baseCenterIndex);
-  }
-
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
-
   return geometry;
 };
 
-const exportHill = async () => {
-  const geometry = buildHillGeometry();
+const buildShieldHillHeight = (x, y, radius) => {
+  if (radius >= 1) {
+    return 0;
+  }
+
+  const dome = Math.pow(1 - Math.pow(radius, 1.28), 1.95) * 1.06;
+  const shoulder = smoothstep(1, 0.52, radius) * 0.26;
+  const broadNoise = fbm(x * 1.4, y * 1.4, 4, 13) * 0.12;
+  const detailNoise = fbm(x * 3.2, y * 3.2, 2, 29) * 0.035;
+  const noiseMask = Math.pow(1 - radius, 1.3);
+
+  return Math.max(0, (dome + shoulder + (broadNoise + detailNoise) * noiseMask) * rimFade(radius));
+};
+
+const buildButteHillHeight = (x, y, radius) => {
+  if (radius >= 1) {
+    return 0;
+  }
+
+  const rotated = rotate(x, y, Math.PI / 9);
+  const warpedRadius = Math.hypot(rotated.x * 1.08, rotated.y * 0.92);
+  const plateau = smoothstep(0.72, 0, warpedRadius) * 0.88;
+  const shoulder = smoothstep(1, 0.48, warpedRadius) * 0.42;
+  const saddle = -gaussian(x, y, -0.12, 0.08, 0.18, 0.16) * 0.1;
+  const terraces = (1 - Math.abs(fbm(x * 2.6, y * 2.6, 3, 41))) * 0.06;
+
+  return Math.max(
+    0,
+    (plateau + shoulder + saddle + terraces * Math.pow(1 - warpedRadius, 1.2)) *
+      rimFade(radius, 0.86),
+  );
+};
+
+const buildRidgeHillHeight = (x, y, radius) => {
+  if (radius >= 1) {
+    return 0;
+  }
+
+  const rotated = rotate(x, y, -Math.PI / 6);
+  const ridge = gaussian(rotated.x, rotated.y, 0.04, 0, 0.17, 0.55) * 1.02;
+  const spurA = gaussian(rotated.x, rotated.y, -0.18, 0.16, 0.21, 0.24) * 0.26;
+  const spurB = gaussian(rotated.x, rotated.y, 0.22, -0.22, 0.18, 0.2) * 0.2;
+  const ridgedNoise = (1 - Math.abs(fbm(rotated.x * 3.4, rotated.y * 1.8, 4, 67))) * 0.11 - 0.045;
+
+  return Math.max(
+    0,
+    (ridge + spurA + spurB + ridgedNoise * Math.pow(1 - radius, 1.5)) * rimFade(radius, 0.8),
+  );
+};
+
+const HILL_VARIANTS = [
+  {
+    name: 'hill-v2.1',
+    color: '#8f7c5b',
+    heightAt: buildShieldHillHeight,
+  },
+  {
+    name: 'hill-v2.2',
+    color: '#887456',
+    heightAt: buildButteHillHeight,
+  },
+  {
+    name: 'hill-v2.3',
+    color: '#836d50',
+    heightAt: buildRidgeHillHeight,
+  },
+];
+
+const exportVariant = async ({ name, color, heightAt }) => {
+  const geometry = buildOpenHillGeometry(heightAt);
   const material = new MeshStandardMaterial({
-    color: new Color('#8f7c5b'),
+    color: new Color(color),
     roughness: 0.98,
     metalness: 0,
   });
 
   const hillMesh = new Mesh(geometry, material);
-  hillMesh.name = 'hill_v2';
+  hillMesh.name = name.replace(/[^a-z0-9]+/gi, '_');
 
   const scene = new Scene();
   scene.add(hillMesh);
@@ -260,13 +276,28 @@ const exportHill = async () => {
     onlyVisible: true,
   });
 
-  mkdirSync(dirname(OUTPUT_PATH), { recursive: true });
-  writeFileSync(OUTPUT_PATH, Buffer.from(glb));
+  const outputPath = resolve(OUTPUT_DIRECTORY, `${name}.glb`);
 
-  console.log('Generated terrain model:');
-  console.log('- public/models/terrain/hill-v2.glb');
-  console.log(`- vertices: ${geometry.getAttribute('position').count}`);
-  console.log(`- triangles: ${(geometry.index?.count ?? 0) / 3}`);
+  mkdirSync(dirname(outputPath), { recursive: true });
+  writeFileSync(outputPath, Buffer.from(glb));
+
+  return {
+    name,
+    outputPath,
+    vertexCount: geometry.getAttribute('position').count,
+    triangleCount: (geometry.index?.count ?? 0) / 3,
+  };
 };
 
-await exportHill();
+const generatedVariants = [];
+
+for (const variant of HILL_VARIANTS) {
+  generatedVariants.push(await exportVariant(variant));
+}
+
+console.log('Generated terrain hill variants:');
+for (const variant of generatedVariants) {
+  console.log(`- ${variant.outputPath}`);
+  console.log(`  vertices: ${variant.vertexCount}`);
+  console.log(`  triangles: ${variant.triangleCount}`);
+}

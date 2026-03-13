@@ -26,6 +26,9 @@ import GPanel from '~/components/ui/GPanel.vue';
 import GTextInput from '~/components/ui/GTextInput.vue';
 
 const FALLBACK_MODEL_PATHS = [
+  '/models/terrain/hill-v2.1.glb',
+  '/models/terrain/hill-v2.2.glb',
+  '/models/terrain/hill-v2.3.glb',
   '/models/terrain/hill-v2.glb',
   '/models/terrain/hill.glb',
   '/models/terrain/mountain.glb',

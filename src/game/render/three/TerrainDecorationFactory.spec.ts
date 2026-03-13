@@ -129,7 +129,7 @@ describe('TerrainDecorationFactory', () => {
     });
 
     factory.destroy();
-    pendingLoads.get('/models/terrain/hill.glb')?.(createLoaderResponse(hillResources.scene));
+    pendingLoads.get('/models/terrain/hill-v2.1.glb')?.(createLoaderResponse(hillResources.scene));
     pendingLoads.get('/models/terrain/mountain.glb')?.(
       createLoaderResponse(mountainResources.scene),
     );
