@@ -5,8 +5,10 @@ const GLB_MAGIC = 0x46546c67;
 const GLB_VERSION = 2;
 const JSON_CHUNK_TYPE = 0x4e4f534a;
 const BIN_CHUNK_TYPE = 0x004e4942;
-// Terrain assets are authored/exported in the renderer's Blender-aligned convention:
-// base footprint on XY, positive height on Z.
+// Terrain assets on disk follow standard glTF orientation.
+// The runtime converts imported glTF roots into the renderer's Z-up world.
+
+const toStandardGltfPosition = (x, y, z) => [x, z, -y];
 
 const padTo4 = (buffer, fillByte = 0x00) => {
   const paddedLength = Math.ceil(buffer.length / 4) * 4;
@@ -47,15 +49,15 @@ const buildMoundGeometry = (config) => {
       const x = Math.cos(angle) * ring.radius;
       const y = Math.sin(angle) * ring.radius;
       const z = ring.height;
-      positions.push(x, y, z);
+      positions.push(...toStandardGltfPosition(x, y, z));
     }
   }
 
   const topIndex = positions.length / 3;
-  positions.push(top.x, top.y, top.height);
+  positions.push(...toStandardGltfPosition(top.x, top.y, top.height));
 
   const bottomIndex = positions.length / 3;
-  positions.push(0, 0, rings[0].height);
+  positions.push(...toStandardGltfPosition(0, 0, rings[0].height));
 
   for (let ringIndex = 0; ringIndex < rings.length - 1; ringIndex += 1) {
     const outerOffset = ringVertexOffsets[ringIndex];

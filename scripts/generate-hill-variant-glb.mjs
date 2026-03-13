@@ -6,6 +6,7 @@ import {
   BufferGeometry,
   Color,
   Float32BufferAttribute,
+  Group,
   Mesh,
   MeshStandardMaterial,
   Scene,
@@ -15,8 +16,8 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 const OUTPUT_DIRECTORY = resolve('public/models/terrain');
 const SEGMENTS = 112;
 const RINGS = 36;
-// Terrain assets are authored/exported in the renderer's Blender-aligned convention:
-// base footprint on XY, positive height on Z.
+// Terrain assets on disk follow standard glTF orientation.
+// The runtime converts imported glTF roots into the renderer's Z-up world.
 
 class NodeFileReader {
   result = null;
@@ -266,9 +267,13 @@ const exportVariant = async ({ name, color, heightAt }) => {
 
   const hillMesh = new Mesh(geometry, material);
   hillMesh.name = name.replace(/[^a-z0-9]+/gi, '_');
+  const exportRoot = new Group();
+  exportRoot.name = `${hillMesh.name}_export_root`;
+  exportRoot.rotation.x = -Math.PI / 2;
+  exportRoot.add(hillMesh);
 
   const scene = new Scene();
-  scene.add(hillMesh);
+  scene.add(exportRoot);
 
   const exporter = new GLTFExporter();
   const glb = await exporter.parseAsync(scene, {

@@ -13,6 +13,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { tiles } from '~/base/tiles';
 import { buildMapElevationObjectName } from '~/game/render/layers/mapLayerObjectNames';
 import { axialToPixel } from '~/game/render/hexMath';
+import { orientImportedGltfRoot } from '~/game/render/three/modelOrientation';
 import type { HexKey } from '~/types/hex';
 import type { ElevationType } from '~/base/elevation';
 import type { GameMap, MapTile } from '~/types/map';
@@ -161,7 +162,8 @@ export class TerrainDecorationFactory {
       }
 
       const center = axialToPixel({ q: tile.q, r: tile.r }, map.tileSize, map.layout);
-      const instance = cloneModelTemplate(template);
+      const instance = new Group();
+      const modelRoot = cloneModelTemplate(template);
       const terrainTint = buildTerrainTint(tile);
       const seed = hashHexKey(key);
       const yaw = toUnitRandom(seed) * Math.PI * 2;
@@ -171,12 +173,13 @@ export class TerrainDecorationFactory {
         (toUnitRandom(Math.imul(seed ^ 0x85ebca6b, 22695477)) - 0.5) * map.tileSize * 0.08;
 
       instance.name = buildMapElevationObjectName(key, tile.elevation);
+      instance.add(modelRoot);
       instance.position.set(
         center.x + map.origin.x + jitterX,
         center.y + map.origin.y + jitterY,
         zOffset,
       );
-      instance.rotation.set(0, 0, yaw);
+      instance.rotation.z = yaw;
       instance.scale.set(scale, scale, scale);
       this.applyTerrainTint(instance, terrainTint, tile.elevation);
       targetGroup.add(instance);
@@ -218,8 +221,9 @@ export class TerrainDecorationFactory {
           return;
         }
 
-        root.updateMatrixWorld(true);
-        loadedTemplates.set(elevation, root);
+        const orientedRoot = orientImportedGltfRoot(root);
+        orientedRoot.updateMatrixWorld(true);
+        loadedTemplates.set(elevation, orientedRoot);
       }),
     )
       .then((results) => {

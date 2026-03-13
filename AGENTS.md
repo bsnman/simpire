@@ -29,7 +29,8 @@ Follow these project-specific instructions when working in this repo.
 - Terrain cover (for example forest, jungle, bamboo, reeds) must be modeled as a terrain-feature layer separate from economic resources so both can coexist on a tile.
 - Map renderer layer toggles must keep hover/picking targets in a non-visual interaction layer so disabling visible fills never breaks raycast behavior.
 - Give renderer layer groups and per-tile render objects deterministic shared names so Three.js scene inspection and renderer tests can target stable structure.
-- Keep renderer and model-debug scenes Blender-aligned `Z-up`: map tiles live on the `XY` plane, `Z` is height/elevation, and imported/generated assets should not need hidden runtime reorientation to appear upright.
+- Keep renderer and model-debug scenes `Z-up`: map tiles live on the `XY` plane and `Z` is height/elevation.
+- Keep GLB assets on disk in standard glTF orientation; apply one shared import correction when loading them into the renderer/model-debug scene instead of baking engine-specific axis tweaks into generated files.
 - For macro terrain generation, avoid directional bias (for example diagonal streak artifacts) by using symmetric hex-neighbor rules, deterministic shuffled iteration where applicable, and isotropic/rotated noise sampling.
 - For terrain biome classification, avoid single-point coordinate hash sampling; use deterministic isotropic/rotated multi-sample climate noise so plains/grassland transitions do not form axis-aligned stripes.
 - Keep macro-mask primary region selection close to target land ratio before final rebalance; avoid large one-pass rebalance corrections because they can introduce single-axis land streak artifacts.

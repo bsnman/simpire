@@ -2,6 +2,7 @@ import { BufferGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial, Texture } f
 import { describe, expect, it, vi } from 'vitest';
 
 import { buildMapElevationObjectName } from '~/game/render/layers/mapLayerObjectNames';
+import { GLTF_IMPORT_CORRECTION_ROTATION_X } from '~/game/render/three/modelOrientation';
 import {
   TerrainDecorationFactory,
   type TerrainModelLoaderLike,
@@ -94,7 +95,10 @@ describe('TerrainDecorationFactory', () => {
     expect(targetGroup.children[0]?.rotation.x).toBe(0);
     expect(targetGroup.children[0]?.rotation.y).toBe(0);
     expect(Number.isFinite(targetGroup.children[0]?.rotation.z)).toBe(true);
-    const hillMesh = targetGroup.children[0]?.children[0] as Mesh | undefined;
+    expect(targetGroup.children[0]?.children[0]?.rotation.x).toBeCloseTo(
+      GLTF_IMPORT_CORRECTION_ROTATION_X,
+    );
+    const hillMesh = targetGroup.children[0]?.getObjectByProperty('isMesh', true) as Mesh | undefined;
     expect(Array.isArray(hillMesh?.material)).toBe(false);
     expect((hillMesh?.material as MeshBasicMaterial | undefined)?.side).toBe(DoubleSide);
 

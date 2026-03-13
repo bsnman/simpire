@@ -4,7 +4,10 @@
     "/models/terrain/hill-v2.2.glb",
     "/models/terrain/hill-v2.3.glb",
     "/models/terrain/hill-v2.glb",
+
+    "/models/terrain/hill-v3.glb",
     "/models/terrain/hill.glb",
-    "/models/terrain/mountain.glb"
+    "/models/terrain/mountain.glb",
+    "/models/terrain/mountain-v3.glb"
   ]
 }

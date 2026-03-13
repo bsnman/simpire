@@ -24,14 +24,17 @@ import GButton from '~/components/ui/GButton.vue';
 import GNumberInput from '~/components/ui/GNumberInput.vue';
 import GPanel from '~/components/ui/GPanel.vue';
 import GTextInput from '~/components/ui/GTextInput.vue';
+import { orientImportedGltfRoot } from '~/game/render/three/modelOrientation';
 
 const FALLBACK_MODEL_PATHS = [
   '/models/terrain/hill-v2.1.glb',
   '/models/terrain/hill-v2.2.glb',
   '/models/terrain/hill-v2.3.glb',
   '/models/terrain/hill-v2.glb',
+  '/models/terrain/hill-v3.glb',
   '/models/terrain/hill.glb',
   '/models/terrain/mountain.glb',
+  '/models/terrain/mountain-v3.glb',
 ] as const;
 const MIN_MODEL_SCALE = 0.1;
 const DEFAULT_MODEL_SCALE = 1;
@@ -296,11 +299,13 @@ const loadModel = async (modelPath: string) => {
       return;
     }
 
-    const root = gltf.scene ?? gltf.scenes[0];
+    const rawRoot = gltf.scene ?? gltf.scenes[0];
 
-    if (!root) {
+    if (!rawRoot) {
       throw new Error('Model did not include a renderable scene.');
     }
+
+    const root = orientImportedGltfRoot(rawRoot);
 
     root.updateMatrixWorld(true);
 
