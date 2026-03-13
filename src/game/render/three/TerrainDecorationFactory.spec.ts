@@ -1,4 +1,4 @@
-import { BufferGeometry, Group, Mesh, MeshBasicMaterial, Texture } from 'three';
+import { BufferGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial, Texture } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 
 import { buildMapElevationObjectName } from '~/game/render/layers/mapLayerObjectNames';
@@ -88,6 +88,9 @@ describe('TerrainDecorationFactory', () => {
 
     expect(targetGroup.children).toHaveLength(1);
     expect(targetGroup.children[0]?.name).toBe(buildMapElevationObjectName(toHexKey(0, 0), 'hill'));
+    const hillMesh = targetGroup.children[0]?.children[0] as Mesh | undefined;
+    expect(Array.isArray(hillMesh?.material)).toBe(false);
+    expect((hillMesh?.material as MeshBasicMaterial | undefined)?.side).toBe(DoubleSide);
 
     factory.destroy();
 
@@ -129,7 +132,7 @@ describe('TerrainDecorationFactory', () => {
     });
 
     factory.destroy();
-    pendingLoads.get('/models/terrain/hill-v2.1.glb')?.(createLoaderResponse(hillResources.scene));
+    pendingLoads.get('/models/terrain/hill-v2.3.glb')?.(createLoaderResponse(hillResources.scene));
     pendingLoads.get('/models/terrain/mountain.glb')?.(
       createLoaderResponse(mountainResources.scene),
     );

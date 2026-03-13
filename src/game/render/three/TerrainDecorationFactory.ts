@@ -1,6 +1,7 @@
 import {
   BufferGeometry,
   Color,
+  DoubleSide,
   Group,
   Texture,
   type Material,
@@ -177,7 +178,7 @@ export class TerrainDecorationFactory {
       );
       instance.rotation.set(0, 0, yaw);
       instance.scale.set(scale, scale, scale);
-      this.applyTerrainTint(instance, terrainTint);
+      this.applyTerrainTint(instance, terrainTint, tile.elevation);
       targetGroup.add(instance);
     }
   }
@@ -273,7 +274,7 @@ export class TerrainDecorationFactory {
     this.templates.clear();
   }
 
-  private applyTerrainTint(instance: Object3D, tint: Color) {
+  private applyTerrainTint(instance: Object3D, tint: Color, elevation: ElevationType) {
     instance.traverse((node) => {
       const mesh = node as Mesh;
 
@@ -282,16 +283,23 @@ export class TerrainDecorationFactory {
       }
 
       if (Array.isArray(mesh.material)) {
-        mesh.material = mesh.material.map((material) => this.getTintedMaterial(material, tint));
+        mesh.material = mesh.material.map((material) =>
+          this.getTintedMaterial(material, tint, elevation),
+        );
         return;
       }
 
-      mesh.material = this.getTintedMaterial(mesh.material, tint);
+      mesh.material = this.getTintedMaterial(mesh.material, tint, elevation);
     });
   }
 
-  private getTintedMaterial(baseMaterial: Material, tint: Color): Material {
-    const tintKey = tint.getHexString();
+  private getTintedMaterial(
+    baseMaterial: Material,
+    tint: Color,
+    elevation: ElevationType,
+  ): Material {
+    const side = elevation === 'hill' ? DoubleSide : baseMaterial.side;
+    const tintKey = `${tint.getHexString()}:${side}`;
     const tintedMaterialsByColor = this.tintedMaterialCache.get(baseMaterial);
 
     if (tintedMaterialsByColor?.has(tintKey)) {
@@ -304,6 +312,8 @@ export class TerrainDecorationFactory {
     if (tintedWithColor.color?.isColor) {
       tintedWithColor.color.copy(tint);
     }
+
+    tinted.side = side;
 
     const cache = tintedMaterialsByColor ?? new Map<string, Material>();
     cache.set(tintKey, tinted);
