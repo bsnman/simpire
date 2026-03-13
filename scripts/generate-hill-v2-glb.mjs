@@ -16,6 +16,8 @@ const OUTPUT_PATH = resolve('public/models/terrain/hill-v2.glb');
 const SEGMENTS = 96;
 const RINGS = 30;
 const BASE_CAP_DEPTH = -0.22;
+// Terrain assets are authored/exported in the renderer's Blender-aligned convention:
+// base footprint on XY, positive height on Z.
 
 class NodeFileReader {
   result = null;

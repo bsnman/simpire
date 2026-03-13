@@ -57,11 +57,11 @@ export const createSceneSetup = (canvas: HTMLCanvasElement): ThreeSceneSetup => 
     GROUND_BOUNCE_COLOR,
     HEMISPHERE_INTENSITY,
   );
-  hemisphereLight.position.set(0, 0, -1000);
+  hemisphereLight.position.set(0, 0, 1000);
   scene.add(hemisphereLight);
 
   const sunLight = new DirectionalLight(SUN_LIGHT_COLOR, SUNLIGHT_INTENSITY);
-  sunLight.position.set(1000, 2000, -9200);
+  sunLight.position.set(1000, 2000, 9200);
   sunLight.target.position.set(0, 0, 0);
   scene.add(sunLight);
   scene.add(sunLight.target);

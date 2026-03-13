@@ -88,6 +88,12 @@ describe('TerrainDecorationFactory', () => {
 
     expect(targetGroup.children).toHaveLength(1);
     expect(targetGroup.children[0]?.name).toBe(buildMapElevationObjectName(toHexKey(0, 0), 'hill'));
+    expect(Number.isFinite(targetGroup.children[0]?.position.x)).toBe(true);
+    expect(Number.isFinite(targetGroup.children[0]?.position.y)).toBe(true);
+    expect(targetGroup.children[0]?.position.z).toBe(1);
+    expect(targetGroup.children[0]?.rotation.x).toBe(0);
+    expect(targetGroup.children[0]?.rotation.y).toBe(0);
+    expect(Number.isFinite(targetGroup.children[0]?.rotation.z)).toBe(true);
     const hillMesh = targetGroup.children[0]?.children[0] as Mesh | undefined;
     expect(Array.isArray(hillMesh?.material)).toBe(false);
     expect((hillMesh?.material as MeshBasicMaterial | undefined)?.side).toBe(DoubleSide);

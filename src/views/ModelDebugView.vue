@@ -38,6 +38,7 @@ const DEFAULT_MODEL_SCALE = 1;
 const DEFAULT_HEMISPHERE_INTENSITY = 0.7;
 const DEFAULT_DIRECTIONAL_INTENSITY = 0.95;
 const DEFAULT_DIRECTIONAL_POSITION = { x: 4, y: 6, z: 8 };
+const Z_UP_AXIS = new Vector3(0, 0, 1);
 
 type RendererCanvasElement = InstanceType<typeof WebGLRenderer>['domElement'];
 type SceneResizeObserver = {
@@ -225,7 +226,7 @@ const resetCamera = () => {
   }
 
   const radius = Math.max(0.5, modelRadius * autoFitScale * modelScale.value);
-  camera.position.set(radius * 2.2, radius * 1.5, radius * 2.4);
+  camera.position.set(radius * 2.2, radius * 2.4, radius * 1.5);
   camera.near = Math.max(0.01, radius / 60);
   camera.far = Math.max(80, radius * 80);
   camera.updateProjectionMatrix();
@@ -362,7 +363,8 @@ const initScene = () => {
   scene.background = new Color(0x101418);
 
   camera = new PerspectiveCamera(44, 1, 0.01, 2000);
-  camera.position.set(4, 2.6, 4.8);
+  camera.up.copy(Z_UP_AXIS);
+  camera.position.set(4, 4.8, 2.6);
   camera.lookAt(0, 0, 0);
 
   renderer = new WebGLRenderer({
@@ -379,7 +381,7 @@ const initScene = () => {
   controls.target.set(0, 0, 0);
 
   hemisphereLight = new HemisphereLight(0xcddcf5, 0x3d3128, hemisphereLightIntensity.value);
-  hemisphereLight.position.set(0, 3, 0);
+  hemisphereLight.position.set(0, 0, 3);
   scene.add(hemisphereLight);
 
   directionalLight = new DirectionalLight(0xfff3d8, directionalLightIntensity.value);
@@ -393,6 +395,7 @@ const initScene = () => {
   scene.add(directionalLight.target);
 
   gridHelper = new GridHelper(10, 20, 0x4f6072, 0x263645);
+  gridHelper.rotation.x = Math.PI / 2;
   scene.add(gridHelper);
 
   applyLightingSettings();

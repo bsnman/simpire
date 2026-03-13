@@ -5,6 +5,8 @@ const GLB_MAGIC = 0x46546c67;
 const GLB_VERSION = 2;
 const JSON_CHUNK_TYPE = 0x4e4f534a;
 const BIN_CHUNK_TYPE = 0x004e4942;
+// Terrain assets are authored/exported in the renderer's Blender-aligned convention:
+// base footprint on XY, positive height on Z.
 
 const padTo4 = (buffer, fillByte = 0x00) => {
   const paddedLength = Math.ceil(buffer.length / 4) * 4;

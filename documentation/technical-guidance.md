@@ -77,6 +77,7 @@ Suggested pattern:
 - Own Three.js `WebGLRenderer`, scene camera, and render layers.
 - Keep composite renderer entry points stable (for example `MapLayer`) and hide concern-specific sublayers behind them.
 - Convert domain coords to pixel positions through hex layout helpers.
+- Renderer world convention is Blender-aligned `Z-up`: tiles live on the `XY` plane and height/elevation offsets use `Z`.
 - Render map first, then terrain features, then resources, then units, then overlays/UI layer.
 - When visual layers can be disabled, keep hover/raycast targets in a separate non-visual interaction layer so picking does not depend on visible meshes.
 - Handle view-only controls such as zoom/pan (do not store these in Pinia game state).
@@ -131,6 +132,7 @@ This keeps rows visually aligned while still storing canonical axial coordinates
 - Hex-keyed map state in `src/stores/currentGame/map.ts`
 - Three-backed `GameRenderer` + composite `MapLayer` in `src/game/render`
 - Renderer-owned `MapRenderConfig` toggles for tile color, hex outlines, and elevation visuals
+- Blender-aligned `Z-up` world space with tile geometry on the `XY` plane and elevation on `Z`
 - `TileColorLayer`, `HexOutlineLayer`, `TileElevationLayer`, and `MapInteractionLayer` behind `MapLayer`
 - Wheel zoom handled in the game view/renderer boundary
 - Deterministic map generation registry in `src/game/mapgen` with plugin-ready algorithm contracts

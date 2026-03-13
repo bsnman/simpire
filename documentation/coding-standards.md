@@ -27,6 +27,7 @@
 - Renderer code must be deterministic for identical input state.
 - Separate layers by concern: map, resources, units, overlays.
 - Keep coordinate conversion in shared hex utility modules.
+- Treat renderer world space as `Z-up` to match Blender-authored assets; keep map tiles on the `XY` plane and use `Z` for height/layer offsets.
 - Keep camera/view interactions (zoom, pan) in renderer or view glue code, not Pinia gameplay state.
 - Avoid game-rule decisions in renderer modules.
 

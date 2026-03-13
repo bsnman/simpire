@@ -15,6 +15,8 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 const OUTPUT_DIRECTORY = resolve('public/models/terrain');
 const SEGMENTS = 112;
 const RINGS = 36;
+// Terrain assets are authored/exported in the renderer's Blender-aligned convention:
+// base footprint on XY, positive height on Z.
 
 class NodeFileReader {
   result = null;
