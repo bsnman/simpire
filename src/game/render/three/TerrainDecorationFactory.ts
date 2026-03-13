@@ -26,6 +26,11 @@ type PopulateTerrainDecorationsOptions = {
   scaleMultiplier: number;
 };
 
+// const TERRAIN_MODEL_PATHS: Partial<Record<ElevationType, string>> = {
+//   hill: '/models/terrain/hill-v2.3.glb',
+//   mountain: '/models/terrain/mountain.glb',
+// };
+
 const TERRAIN_MODEL_PATHS: Partial<Record<ElevationType, string>> = {
   hill: '/models/terrain/hill-v2.3.glb',
   mountain: '/models/terrain/mountain.glb',

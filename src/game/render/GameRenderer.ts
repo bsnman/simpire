@@ -1,4 +1,13 @@
-import { AxesHelper, Box3, Group, Plane, Quaternion, Raycaster, Vector2, Vector3 } from 'three';
+import {
+  AxesHelper,
+  Box3,
+  Group,
+  OrthographicCamera,
+  Plane,
+  Raycaster,
+  Vector2,
+  Vector3,
+} from 'three';
 
 import type { GameMap } from '~/types/map';
 import { MapLayer, type HoveredTile } from '~/game/render/layers/MapLayer';
@@ -36,8 +45,19 @@ type GameRendererDependencies = {
   sceneSetupFactory?: typeof createSceneSetup;
 };
 
+type ViewportSize = {
+  width: number;
+  height: number;
+};
+
+type DepthRange = {
+  hasBounds: boolean;
+  minDistance: number;
+  maxDistance: number;
+};
+
 export class GameRenderer {
-  private static readonly MIN_CAMERA_Z = 1000;
+  private static readonly MIN_CAMERA_DISTANCE = 1000;
   private static readonly CAMERA_DEPTH_MARGIN = 300;
   private static readonly MIN_CAMERA_NEAR = 0.1;
   private static readonly MIN_CAMERA_FAR = 2000;
@@ -47,12 +67,13 @@ export class GameRenderer {
   private static readonly MAX_ORBIT_TILT_OFFSET = (40 * Math.PI) / 180;
   private static readonly MIN_FINAL_TILT_RADIANS = (-70 * Math.PI) / 180;
   private static readonly MAX_FINAL_TILT_RADIANS = (78 * Math.PI) / 180;
+  private static readonly MIN_DEBUG_TILT_RADIANS = (-85 * Math.PI) / 180;
+  private static readonly MAX_DEBUG_TILT_RADIANS = (85 * Math.PI) / 180;
   private static readonly DEBUG_AXES_SIZE = 360;
 
   private readonly mapLayer: MapLayerLike;
   private readonly raycaster = new Raycaster();
-  private readonly viewport = new Group();
-  private readonly panGroup = new Group();
+  private readonly sceneRoot = new Group();
   private readonly debugAxes = new AxesHelper(GameRenderer.DEBUG_AXES_SIZE);
   private readonly mapDepthBounds = new Box3();
   private readonly initialZoom = 1;
@@ -61,20 +82,21 @@ export class GameRenderer {
   private readonly tiltStartZoom = this.initialZoom / 3;
   private readonly tiltMaxZoom = this.maxZoom / 1.3;
   private readonly maxTiltRadians = (64 * Math.PI) / 180;
-  private readonly zoomAnchorNdc = new Vector2();
-  private readonly zoomAnchorPlane = new Plane();
-  private readonly zoomAnchorPlaneNormal = new Vector3();
-  private readonly zoomAnchorPlanePoint = new Vector3();
-  private readonly zoomAnchorPlaneQuaternion = new Quaternion();
-  private readonly zoomAnchorWorldPoint = new Vector3();
-  private readonly zoomAnchorLocalPoint = new Vector3();
-  private readonly zoomAnchorProjectedPoint = new Vector3();
-  private readonly zoomAnchorRayDirection = new Vector3();
-  private readonly panDeltaLocal = new Vector3();
-  private readonly panInverseQuaternion = new Quaternion();
+  private readonly screenPointNdc = new Vector2();
+  private readonly mapPlane = new Plane(new Vector3(0, 0, 1), 0);
+  private readonly mapPlaneAnchor = new Vector3();
+  private readonly mapPlaneDisplacedAnchor = new Vector3();
+  private readonly mapPlaneZoomAnchorBefore = new Vector3();
+  private readonly mapPlaneZoomAnchorAfter = new Vector3();
+  private readonly cameraFocusWorld = new Vector3();
+  private readonly cameraFocusDelta = new Vector3();
+  private readonly cameraOffsetDirection = new Vector3();
+  private readonly cameraPosition = new Vector3();
+  private readonly cameraBoundsCorner = new Vector3();
   private readonly sceneSetupFactory: typeof createSceneSetup;
   private sceneSetup: ThreeSceneSetup | null = null;
   private initialized = false;
+  private cameraFocusInitialized = false;
   private debugCameraControlsEnabled = false;
   private zoom = this.initialZoom;
   private pointerLocked = false;
@@ -95,8 +117,7 @@ export class GameRenderer {
   }: GameRendererDependencies = {}) {
     this.mapLayer = mapLayer;
     this.sceneSetupFactory = sceneSetupFactory;
-    this.viewport.name = 'map-viewport';
-    this.panGroup.name = 'map-pan-group';
+    this.sceneRoot.name = 'map-scene-root';
     this.debugAxes.name = 'debug-axes';
     this.debugAxes.visible = false;
   }
@@ -111,21 +132,18 @@ export class GameRenderer {
     }
 
     this.sceneSetup = this.sceneSetupFactory(canvas);
-    this.viewport.clear();
-    this.panGroup.clear();
-    this.viewport.position.set(0, 0, 0);
-    this.panGroup.position.set(0, 0, 0);
-    this.applyZoomAndTilt(this.zoom);
-    this.panGroup.add(this.mapLayer.group);
-    this.panGroup.add(this.debugAxes);
-    this.viewport.add(this.panGroup);
-    this.sceneSetup.scene.add(this.viewport);
+    this.sceneRoot.clear();
+    this.sceneRoot.add(this.mapLayer.group);
+    this.sceneRoot.add(this.debugAxes);
+    this.sceneSetup.scene.add(this.sceneRoot);
+    this.initializeCameraFocusFromViewport(this.sceneSetup.getViewportSize());
+    this.updateCameraTransform();
 
     this.initialized = true;
 
     if (this.lastRenderedMap) {
       this.mapLayer.render(this.lastRenderedMap, this.currentMapRenderConfig);
-      this.updateCameraDepthRange();
+      this.updateCameraTransform();
     }
 
     this.animationFrameHandle = globalThis.window.requestAnimationFrame(this.handleFrame);
@@ -139,7 +157,7 @@ export class GameRenderer {
     }
 
     this.mapLayer.render(map, this.currentMapRenderConfig);
-    this.updateCameraDepthRange();
+    this.updateCameraTransform();
   }
 
   setMapRenderConfig(config: MapRenderConfigInput) {
@@ -152,7 +170,7 @@ export class GameRenderer {
     }
 
     this.mapLayer.render(this.lastRenderedMap, this.currentMapRenderConfig);
-    this.updateCameraDepthRange();
+    this.updateCameraTransform();
   }
 
   getMapRenderConfig(): MapRenderConfig {
@@ -207,15 +225,25 @@ export class GameRenderer {
       return;
     }
 
-    const hasZoomAnchor = this.captureZoomAnchorLocalPoint(screenX, screenY);
-    this.applyZoomAndTilt(nextZoom);
-    this.updateCameraDepthRange();
-
-    if (hasZoomAnchor) {
-      this.keepZoomAnchorAtScreenPoint(screenX, screenY);
-    }
+    const hasZoomAnchor = this.intersectScreenPointWithMapPlane(
+      screenX,
+      screenY,
+      this.mapPlaneZoomAnchorBefore,
+    );
 
     this.zoom = nextZoom;
+    this.updateCameraTransform();
+
+    if (
+      hasZoomAnchor &&
+      this.intersectScreenPointWithMapPlane(screenX, screenY, this.mapPlaneZoomAnchorAfter)
+    ) {
+      this.cameraFocusDelta
+        .copy(this.mapPlaneZoomAnchorBefore)
+        .sub(this.mapPlaneZoomAnchorAfter);
+      this.cameraFocusWorld.add(this.cameraFocusDelta);
+      this.updateCameraTransform();
+    }
   }
 
   setEdgePointerPosition(x: number, y: number, viewportWidth: number, viewportHeight: number) {
@@ -280,13 +308,13 @@ export class GameRenderer {
         ),
       );
     }
-    this.applyZoomAndTilt(this.zoom);
+    this.updateCameraTransform();
   }
 
   resetDebugOrbit() {
     this.orbitYawRadians = 0;
     this.orbitTiltOffsetRadians = 0;
-    this.applyZoomAndTilt(this.zoom);
+    this.updateCameraTransform();
   }
 
   setDebugAxesVisible(isVisible: boolean) {
@@ -295,6 +323,7 @@ export class GameRenderer {
 
   setDebugCameraControlsEnabled(isEnabled: boolean) {
     this.debugCameraControlsEnabled = isEnabled;
+    this.updateCameraTransform();
   }
 
   setArrowKeyPanPressed(key: ArrowKey, isPressed: boolean) {
@@ -337,7 +366,7 @@ export class GameRenderer {
     this.mapLayer.destroy();
 
     if (this.sceneSetup) {
-      this.sceneSetup.scene.remove(this.viewport);
+      this.sceneSetup.scene.remove(this.sceneRoot);
       this.sceneSetup.destroy();
       this.sceneSetup = null;
     }
@@ -348,79 +377,176 @@ export class GameRenderer {
     this.lastRenderedMap = null;
     this.currentMapRenderConfig = normalizeMapRenderConfig(DEFAULT_MAP_RENDER_CONFIG);
     this.clearArrowKeyPan();
+    this.cameraFocusWorld.set(0, 0, 0);
+    this.cameraFocusInitialized = false;
     this.initialized = false;
   }
 
   private panByScreenDelta(deltaX: number, deltaY: number) {
-    if (deltaX === 0 && deltaY === 0) {
+    if ((deltaX === 0 && deltaY === 0) || !this.sceneSetup) {
       return;
     }
 
-    const scale = this.viewport.scale.x;
+    const viewportSize = this.sceneSetup.getViewportSize();
 
-    if (scale === 0) {
+    if (viewportSize.width <= 0 || viewportSize.height <= 0) {
       return;
     }
 
-    this.panDeltaLocal.set(deltaX / scale, deltaY / scale, 0);
-    this.panInverseQuaternion.copy(this.viewport.quaternion).invert();
-    this.panDeltaLocal.applyQuaternion(this.panInverseQuaternion);
-    this.panGroup.position.add(this.panDeltaLocal);
+    const anchorScreenX = viewportSize.width * 0.5;
+    const anchorScreenY = viewportSize.height * 0.5;
+
+    if (
+      !this.intersectScreenPointWithMapPlane(anchorScreenX, anchorScreenY, this.mapPlaneAnchor) ||
+      !this.intersectScreenPointWithMapPlane(
+        anchorScreenX - deltaX,
+        anchorScreenY - deltaY,
+        this.mapPlaneDisplacedAnchor,
+      )
+    ) {
+      return;
+    }
+
+    this.cameraFocusDelta.copy(this.mapPlaneDisplacedAnchor).sub(this.mapPlaneAnchor);
+    this.cameraFocusWorld.add(this.cameraFocusDelta);
+    this.updateCameraTransform();
   }
 
-  private applyZoomAndTilt(zoom: number) {
-    this.viewport.scale.set(zoom, zoom, zoom);
-    this.viewport.rotation.set(this.getEffectiveTiltRadians(zoom), 0, this.orbitYawRadians);
+  private updateCameraTransform() {
+    if (!this.sceneSetup) {
+      return;
+    }
+
+    const viewportSize = this.sceneSetup.getViewportSize();
+
+    if (viewportSize.width <= 0 || viewportSize.height <= 0) {
+      return;
+    }
+
+    this.initializeCameraFocusFromViewport(viewportSize);
+
+    const camera = this.sceneSetup.camera;
+    const halfViewWidth = viewportSize.width / (2 * this.zoom);
+    const halfViewHeight = viewportSize.height / (2 * this.zoom);
+
+    camera.left = -halfViewWidth;
+    camera.right = halfViewWidth;
+    camera.top = -halfViewHeight;
+    camera.bottom = halfViewHeight;
+
+    let cameraDistance = GameRenderer.MIN_CAMERA_DISTANCE;
+    let depthRange = this.getMapDepthRange(camera, cameraDistance);
+
+    if (
+      depthRange.hasBounds &&
+      depthRange.minDistance < GameRenderer.CAMERA_DEPTH_MARGIN
+    ) {
+      cameraDistance += GameRenderer.CAMERA_DEPTH_MARGIN - depthRange.minDistance;
+      depthRange = this.getMapDepthRange(camera, cameraDistance);
+    }
+
+    const near = depthRange.hasBounds
+      ? Math.max(
+          GameRenderer.MIN_CAMERA_NEAR,
+          depthRange.minDistance - GameRenderer.CAMERA_DEPTH_MARGIN,
+        )
+      : GameRenderer.MIN_CAMERA_NEAR;
+    const far = depthRange.hasBounds
+      ? Math.max(
+          GameRenderer.MIN_CAMERA_FAR,
+          depthRange.maxDistance + GameRenderer.CAMERA_DEPTH_MARGIN,
+        )
+      : GameRenderer.MIN_CAMERA_FAR;
+
+    camera.near = near;
+    camera.far = far > near ? far : near + GameRenderer.CAMERA_DEPTH_MARGIN;
+    camera.updateProjectionMatrix();
+    camera.updateMatrixWorld(true);
+  }
+
+  private initializeCameraFocusFromViewport(viewportSize: ViewportSize) {
+    if (this.cameraFocusInitialized) {
+      return;
+    }
+
+    this.cameraFocusWorld.set(viewportSize.width * 0.5, viewportSize.height * 0.5, 0);
+    this.cameraFocusInitialized = true;
+  }
+
+  private getMapDepthRange(
+    camera: OrthographicCamera,
+    cameraDistance: number,
+  ): DepthRange {
+    this.applyCameraPose(camera, cameraDistance);
+    this.mapLayer.group.updateMatrixWorld(true);
+    this.mapDepthBounds.setFromObject(this.mapLayer.group);
+
+    if (this.mapDepthBounds.isEmpty()) {
+      return {
+        hasBounds: false,
+        minDistance: cameraDistance,
+        maxDistance: cameraDistance,
+      };
+    }
+
+    let minDistance = Number.POSITIVE_INFINITY;
+    let maxDistance = 0;
+    const { min, max } = this.mapDepthBounds;
+
+    for (const x of [min.x, max.x]) {
+      for (const y of [min.y, max.y]) {
+        for (const z of [min.z, max.z]) {
+          this.cameraBoundsCorner.set(x, y, z);
+          this.cameraBoundsCorner.applyMatrix4(camera.matrixWorldInverse);
+          const distance = -this.cameraBoundsCorner.z;
+
+          minDistance = Math.min(minDistance, distance);
+          maxDistance = Math.max(maxDistance, distance);
+        }
+      }
+    }
+
+    return {
+      hasBounds: true,
+      minDistance,
+      maxDistance,
+    };
+  }
+
+  private applyCameraPose(camera: OrthographicCamera, cameraDistance: number) {
+    const tilt = this.getEffectiveTiltRadians(this.zoom);
+    const yaw = this.orbitYawRadians;
+    const sinTilt = Math.sin(tilt);
+
+    this.cameraOffsetDirection.set(
+      sinTilt * Math.sin(yaw),
+      sinTilt * Math.cos(yaw),
+      Math.cos(tilt),
+    );
+    this.cameraPosition
+      .copy(this.cameraOffsetDirection)
+      .multiplyScalar(cameraDistance)
+      .add(this.cameraFocusWorld);
+
+    camera.position.copy(this.cameraPosition);
+    camera.lookAt(this.cameraFocusWorld);
+    camera.updateMatrixWorld(true);
   }
 
   private getEffectiveTiltRadians(zoom: number): number {
     const rawTilt = this.getTiltForZoom(zoom) + this.orbitTiltOffsetRadians;
 
     if (this.debugCameraControlsEnabled) {
-      return rawTilt;
+      return Math.max(
+        GameRenderer.MIN_DEBUG_TILT_RADIANS,
+        Math.min(GameRenderer.MAX_DEBUG_TILT_RADIANS, rawTilt),
+      );
     }
 
     return Math.max(
       GameRenderer.MIN_FINAL_TILT_RADIANS,
       Math.min(GameRenderer.MAX_FINAL_TILT_RADIANS, rawTilt),
     );
-  }
-
-  private updateCameraDepthRange() {
-    if (!this.sceneSetup) {
-      return;
-    }
-
-    this.viewport.updateMatrixWorld(true);
-    this.mapDepthBounds.setFromObject(this.mapLayer.group);
-
-    if (this.mapDepthBounds.isEmpty()) {
-      return;
-    }
-
-    const targetCameraZ = Math.max(
-      GameRenderer.MIN_CAMERA_Z,
-      this.mapDepthBounds.max.z + GameRenderer.CAMERA_DEPTH_MARGIN,
-    );
-
-    if (this.sceneSetup.camera.position.z !== targetCameraZ) {
-      this.sceneSetup.camera.position.z = targetCameraZ;
-      this.sceneSetup.camera.lookAt(0, 0, 0);
-    }
-
-    const far = Math.max(
-      GameRenderer.MIN_CAMERA_FAR,
-      targetCameraZ - this.mapDepthBounds.min.z + GameRenderer.CAMERA_DEPTH_MARGIN,
-    );
-
-    if (
-      this.sceneSetup.camera.near !== GameRenderer.MIN_CAMERA_NEAR ||
-      this.sceneSetup.camera.far !== far
-    ) {
-      this.sceneSetup.camera.near = GameRenderer.MIN_CAMERA_NEAR;
-      this.sceneSetup.camera.far = far;
-      this.sceneSetup.camera.updateProjectionMatrix();
-    }
   }
 
   private getTiltForZoom(zoom: number): number {
@@ -432,7 +558,11 @@ export class GameRenderer {
     });
   }
 
-  private captureZoomAnchorLocalPoint(screenX: number, screenY: number): boolean {
+  private intersectScreenPointWithMapPlane(
+    screenX: number,
+    screenY: number,
+    target: Vector3,
+  ): boolean {
     if (!this.sceneSetup) {
       return false;
     }
@@ -443,57 +573,12 @@ export class GameRenderer {
       return false;
     }
 
-    this.zoomAnchorNdc.set(
+    this.screenPointNdc.set(
       (screenX / viewportSize.width) * 2 - 1,
       -(screenY / viewportSize.height) * 2 + 1,
     );
-    this.raycaster.setFromCamera(this.zoomAnchorNdc, this.sceneSetup.camera);
-
-    this.viewport.updateMatrixWorld(true);
-    this.viewport.getWorldQuaternion(this.zoomAnchorPlaneQuaternion);
-    this.zoomAnchorPlaneNormal.set(0, 0, 1).applyQuaternion(this.zoomAnchorPlaneQuaternion);
-    this.panGroup.getWorldPosition(this.zoomAnchorPlanePoint);
-    this.zoomAnchorPlane.setFromNormalAndCoplanarPoint(
-      this.zoomAnchorPlaneNormal,
-      this.zoomAnchorPlanePoint,
-    );
-
-    const denominator = this.zoomAnchorPlane.normal.dot(this.raycaster.ray.direction);
-
-    if (Math.abs(denominator) <= 1e-8) {
-      return false;
-    }
-
-    const signedDistanceToPlane = this.zoomAnchorPlane.distanceToPoint(this.raycaster.ray.origin);
-    const distanceAlongRay = -signedDistanceToPlane / denominator;
-
-    this.zoomAnchorRayDirection.copy(this.raycaster.ray.direction).multiplyScalar(distanceAlongRay);
-    this.zoomAnchorWorldPoint.copy(this.raycaster.ray.origin).add(this.zoomAnchorRayDirection);
-    this.zoomAnchorLocalPoint.copy(this.zoomAnchorWorldPoint);
-    this.panGroup.worldToLocal(this.zoomAnchorLocalPoint);
-    return true;
-  }
-
-  private keepZoomAnchorAtScreenPoint(screenX: number, screenY: number) {
-    if (!this.sceneSetup) {
-      return;
-    }
-
-    const viewportSize = this.sceneSetup.getViewportSize();
-
-    if (viewportSize.width <= 0 || viewportSize.height <= 0) {
-      return;
-    }
-
-    this.viewport.updateMatrixWorld(true);
-    this.zoomAnchorWorldPoint.copy(this.zoomAnchorLocalPoint);
-    this.panGroup.localToWorld(this.zoomAnchorWorldPoint);
-    this.zoomAnchorProjectedPoint.copy(this.zoomAnchorWorldPoint).project(this.sceneSetup.camera);
-
-    const projectedScreenX = (this.zoomAnchorProjectedPoint.x + 1) * 0.5 * viewportSize.width;
-    const projectedScreenY = (1 - this.zoomAnchorProjectedPoint.y) * 0.5 * viewportSize.height;
-
-    this.panByScreenDelta(screenX - projectedScreenX, screenY - projectedScreenY);
+    this.raycaster.setFromCamera(this.screenPointNdc, this.sceneSetup.camera);
+    return this.raycaster.ray.intersectPlane(this.mapPlane, target) !== null;
   }
 
   private readonly handleFrame = (timestamp: number) => {
@@ -502,6 +587,7 @@ export class GameRenderer {
     }
 
     this.sceneSetup.syncViewportSize();
+    this.updateCameraTransform();
 
     const deltaSeconds =
       this.previousFrameTime === null
