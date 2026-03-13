@@ -7,6 +7,7 @@ import {
 } from 'three';
 
 import type { HexKey, HexLayout } from '~/types/hex';
+import { buildMapHexOutlineObjectName } from '~/game/render/layers/mapLayerObjectNames';
 import {
   buildHexGeometryCacheKey,
   createHexBorderGeometry,
@@ -29,7 +30,7 @@ export class HexOutlineMeshFactory {
       this.getOutlineMaterial(color),
     );
 
-    line.name = `hex-outline:${tileKey}`;
+    line.name = buildMapHexOutlineObjectName(tileKey);
     line.userData[HEX_KEY_USER_DATA_FIELD] = tileKey;
     return line;
   }

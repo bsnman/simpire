@@ -3,6 +3,7 @@ import { Group } from 'three';
 import { tiles } from '~/base/tiles';
 import type { GameMap } from '~/types/map';
 import type { TileColorLayerConfig } from '~/game/render/mapRenderConfig';
+import { MAP_TILE_COLOR_LAYER_GROUP_NAME } from '~/game/render/layers/mapLayerObjectNames';
 import type { MapTileRenderData } from '~/game/render/layers/mapTileRenderData';
 import { HexTileMeshFactory } from '~/game/render/three/HexTileMeshFactory';
 
@@ -13,7 +14,7 @@ export class TileColorLayer {
 
   constructor(tileMeshFactory: HexTileMeshFactory = new HexTileMeshFactory()) {
     this.tileMeshFactory = tileMeshFactory;
-    this.group.name = 'map-tile-color-layer';
+    this.group.name = MAP_TILE_COLOR_LAYER_GROUP_NAME;
   }
 
   render(

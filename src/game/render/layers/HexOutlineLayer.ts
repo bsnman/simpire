@@ -2,6 +2,7 @@ import { Group } from 'three';
 
 import type { GameMap } from '~/types/map';
 import type { HexOutlineLayerConfig } from '~/game/render/mapRenderConfig';
+import { MAP_HEX_OUTLINE_LAYER_GROUP_NAME } from '~/game/render/layers/mapLayerObjectNames';
 import type { MapTileRenderData } from '~/game/render/layers/mapTileRenderData';
 import { HexOutlineMeshFactory } from '~/game/render/three/HexOutlineMeshFactory';
 
@@ -12,7 +13,7 @@ export class HexOutlineLayer {
 
   constructor(outlineMeshFactory: HexOutlineMeshFactory = new HexOutlineMeshFactory()) {
     this.outlineMeshFactory = outlineMeshFactory;
-    this.group.name = 'map-hex-outline-layer';
+    this.group.name = MAP_HEX_OUTLINE_LAYER_GROUP_NAME;
   }
 
   render(

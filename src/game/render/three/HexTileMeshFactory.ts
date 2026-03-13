@@ -9,6 +9,9 @@ import {
 
 import type { HexKey, HexLayout } from '~/types/hex';
 import {
+  buildMapTileColorObjectName,
+} from '~/game/render/layers/mapLayerObjectNames';
+import {
   buildHexGeometryCacheKey,
   createHexShapeGeometry,
   type HexGeometryCacheKey,
@@ -27,7 +30,7 @@ export class HexTileMeshFactory {
   ): Mesh {
     const mesh = new Mesh(this.getHexGeometry(tileSize, layout), this.getFillMaterial(tileColor));
 
-    mesh.name = `hex-tile-fill:${tileKey}`;
+    mesh.name = buildMapTileColorObjectName(tileKey);
     mesh.userData[HEX_KEY_USER_DATA_FIELD] = tileKey;
     return mesh;
   }

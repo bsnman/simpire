@@ -2,6 +2,7 @@ import { Group } from 'three';
 
 import type { GameMap } from '~/types/map';
 import type { ElevationLayerConfig } from '~/game/render/mapRenderConfig';
+import { MAP_ELEVATION_LAYER_GROUP_NAME } from '~/game/render/layers/mapLayerObjectNames';
 import { TerrainDecorationFactory } from '~/game/render/three/TerrainDecorationFactory';
 
 export type TerrainDecorationFactoryLike = Pick<
@@ -17,7 +18,7 @@ export class TileElevationLayer {
 
   constructor(terrainDecorationFactory: TerrainDecorationFactoryLike = new TerrainDecorationFactory()) {
     this.terrainDecorationFactory = terrainDecorationFactory;
-    this.group.name = 'map-elevation-layer';
+    this.group.name = MAP_ELEVATION_LAYER_GROUP_NAME;
   }
 
   render(map: GameMap, config: ElevationLayerConfig) {

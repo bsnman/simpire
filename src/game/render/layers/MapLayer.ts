@@ -3,6 +3,7 @@ import { Group, type Camera, type Raycaster } from 'three';
 import type { HexKey } from '~/types/hex';
 import type { GameMap, MapTile } from '~/types/map';
 import { buildMapTileRenderData } from '~/game/render/layers/mapTileRenderData';
+import { MAP_LAYER_GROUP_NAME } from '~/game/render/layers/mapLayerObjectNames';
 import { HexOutlineLayer } from '~/game/render/layers/HexOutlineLayer';
 import { MapInteractionLayer } from '~/game/render/layers/MapInteractionLayer';
 import { TileColorLayer } from '~/game/render/layers/TileColorLayer';
@@ -58,7 +59,7 @@ export class MapLayer {
     this.hexOutlineLayer = hexOutlineLayer;
     this.tileElevationLayer = tileElevationLayer;
     this.interactionLayer = interactionLayer;
-    this.group.name = 'map-layer';
+    this.group.name = MAP_LAYER_GROUP_NAME;
     this.group.add(
       this.tileColorLayer.group,
       this.hexOutlineLayer.group,
@@ -67,19 +68,9 @@ export class MapLayer {
     );
   }
 
-  render(map: GameMap, config: MapRenderConfig = DEFAULT_MAP_RENDER_CONFIG) {
+  render(map: GameMap, config: MapRenderConfig) {
     this.currentMap = map;
     this.currentRenderConfig = normalizeMapRenderConfig(config);
-    this.renderCurrentMap();
-  }
-
-  setRenderConfig(config: MapRenderConfig) {
-    this.currentRenderConfig = normalizeMapRenderConfig(config);
-
-    if (!this.currentMap) {
-      return;
-    }
-
     this.renderCurrentMap();
   }
 

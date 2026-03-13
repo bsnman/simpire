@@ -75,10 +75,13 @@ Suggested pattern:
 ## Renderer Responsibilities
 
 - Own Three.js `WebGLRenderer`, scene camera, and render layers.
+- Keep composite renderer entry points stable (for example `MapLayer`) and hide concern-specific sublayers behind them.
 - Convert domain coords to pixel positions through hex layout helpers.
 - Render map first, then terrain features, then resources, then units, then overlays/UI layer.
+- When visual layers can be disabled, keep hover/raycast targets in a separate non-visual interaction layer so picking does not depend on visible meshes.
 - Handle view-only controls such as zoom/pan (do not store these in Pinia game state).
 - Do not mutate game rules state; only reflect current state visually.
+- Use deterministic group/object names for renderer layers so Three.js scene inspection and renderer tests can target the same structure reliably.
 
 ## Rectangular Map Fixture Guidance (Pointy Layout)
 
@@ -126,7 +129,9 @@ This keeps rows visually aligned while still storing canonical axial coordinates
 - Runtime renderer has been migrated from PixiJS to Three.js.
 - Current implementation uses:
 - Hex-keyed map state in `src/stores/currentGame/map.ts`
-- Three-backed `GameRenderer` + `MapLayer` in `src/game/render`
+- Three-backed `GameRenderer` + composite `MapLayer` in `src/game/render`
+- Renderer-owned `MapRenderConfig` toggles for tile color, hex outlines, and elevation visuals
+- `TileColorLayer`, `HexOutlineLayer`, `TileElevationLayer`, and `MapInteractionLayer` behind `MapLayer`
 - Wheel zoom handled in the game view/renderer boundary
 - Deterministic map generation registry in `src/game/mapgen` with plugin-ready algorithm contracts
 - Next renderer step is incremental updates and additional layers (units/resources/overlays).

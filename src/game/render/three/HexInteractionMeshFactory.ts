@@ -1,6 +1,7 @@
 import { DoubleSide, Mesh, MeshBasicMaterial, ShapeGeometry } from 'three';
 
 import type { HexKey, HexLayout } from '~/types/hex';
+import { buildMapInteractionObjectName } from '~/game/render/layers/mapLayerObjectNames';
 import {
   buildHexGeometryCacheKey,
   createHexShapeGeometry,
@@ -25,7 +26,7 @@ export class HexInteractionMeshFactory {
   createInteractionMesh(tileSize: number, layout: HexLayout, tileKey: HexKey): Mesh {
     const mesh = new Mesh(this.getHexGeometry(tileSize, layout), this.interactionMaterial);
 
-    mesh.name = `hex-hit-target:${tileKey}`;
+    mesh.name = buildMapInteractionObjectName(tileKey);
     mesh.userData[HEX_KEY_USER_DATA_FIELD] = tileKey;
     return mesh;
   }

@@ -4,6 +4,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { MapLayer } from '~/game/render/layers/MapLayer';
 import { TileElevationLayer, type TerrainDecorationFactoryLike } from '~/game/render/layers/TileElevationLayer';
 import {
+  MAP_ELEVATION_LAYER_GROUP_NAME,
+  MAP_HEX_OUTLINE_LAYER_GROUP_NAME,
+  MAP_INTERACTION_LAYER_GROUP_NAME,
+  MAP_TILE_COLOR_LAYER_GROUP_NAME,
+} from '~/game/render/layers/mapLayerObjectNames';
+import {
   DEFAULT_MAP_RENDER_CONFIG,
   normalizeMapRenderConfig,
   type MapRenderConfig,
@@ -71,12 +77,16 @@ const expectLayerCounts = (
     interaction: number;
   },
 ) => {
-  expect(getLayerGroup(mapLayer, 'map-tile-color-layer').children).toHaveLength(counts.tileColor);
-  expect(getLayerGroup(mapLayer, 'map-hex-outline-layer').children).toHaveLength(
+  expect(getLayerGroup(mapLayer, MAP_TILE_COLOR_LAYER_GROUP_NAME).children).toHaveLength(
+    counts.tileColor,
+  );
+  expect(getLayerGroup(mapLayer, MAP_HEX_OUTLINE_LAYER_GROUP_NAME).children).toHaveLength(
     counts.hexOutline,
   );
-  expect(getLayerGroup(mapLayer, 'map-elevation-layer').children).toHaveLength(counts.elevation);
-  expect(getLayerGroup(mapLayer, 'map-interaction-layer').children).toHaveLength(
+  expect(getLayerGroup(mapLayer, MAP_ELEVATION_LAYER_GROUP_NAME).children).toHaveLength(
+    counts.elevation,
+  );
+  expect(getLayerGroup(mapLayer, MAP_INTERACTION_LAYER_GROUP_NAME).children).toHaveLength(
     counts.interaction,
   );
 };
@@ -191,8 +201,8 @@ describe('MapLayer', () => {
       raycaster,
     });
 
-    expect(getLayerGroup(mapLayer, 'map-tile-color-layer').children).toHaveLength(0);
-    expect(getLayerGroup(mapLayer, 'map-interaction-layer').children).toHaveLength(1);
+    expect(getLayerGroup(mapLayer, MAP_TILE_COLOR_LAYER_GROUP_NAME).children).toHaveLength(0);
+    expect(getLayerGroup(mapLayer, MAP_INTERACTION_LAYER_GROUP_NAME).children).toHaveLength(1);
     expect(hoveredTileKey).toBe('0,0');
   });
 

@@ -17,6 +17,7 @@ import {
   stringifyMapgenReproPayload,
 } from '~/game/mapgen/repro';
 import { GameRenderer } from '~/game/render/GameRenderer';
+import type { MapRenderConfig, MapRenderConfigInput } from '~/game/render/mapRenderConfig';
 import type { MapTile } from '~/types/map';
 import { useCurrentGameMapStore } from '~/stores/currentGame/map';
 import { useMapgenDebugStore } from '~/stores/debugger/mapgen';
@@ -63,6 +64,7 @@ const useModelDebugControls = ref(false);
 const showDebugAxes = ref(false);
 const cameraTiltDegrees = ref(renderer.getTiltDegrees());
 const cameraZoomLevel = ref(renderer.getZoomLevel());
+const rendererLayerConfig = ref<MapRenderConfig>(renderer.getMapRenderConfig());
 const mapgenDebugStatus = ref('');
 const mapgenDebugError = ref('');
 
@@ -129,6 +131,15 @@ const mapgenParamsJson = computed(() =>
 const clearMapgenFeedback = () => {
   mapgenDebugStatus.value = '';
   mapgenDebugError.value = '';
+};
+
+const syncRendererLayerConfig = () => {
+  rendererLayerConfig.value = renderer.getMapRenderConfig();
+};
+
+const updateRendererLayerConfig = (config: MapRenderConfigInput) => {
+  renderer.setMapRenderConfig(config);
+  syncRendererLayerConfig();
 };
 
 const toggleMapgenDebugPanel = () => {
@@ -236,6 +247,33 @@ const setShowDebugAxes = (event: { target: unknown }) => {
   const isEnabled = target?.checked === true;
   showDebugAxes.value = isEnabled;
   renderer.setDebugAxesVisible(isEnabled);
+};
+
+const setTileColorLayerEnabled = (event: { target: unknown }) => {
+  const target = event.target as { checked?: unknown } | null;
+  updateRendererLayerConfig({
+    tileColor: {
+      enabled: target?.checked === true,
+    },
+  });
+};
+
+const setHexOutlineLayerEnabled = (event: { target: unknown }) => {
+  const target = event.target as { checked?: unknown } | null;
+  updateRendererLayerConfig({
+    hexOutline: {
+      enabled: target?.checked === true,
+    },
+  });
+};
+
+const setElevationLayerEnabled = (event: { target: unknown }) => {
+  const target = event.target as { checked?: unknown } | null;
+  updateRendererLayerConfig({
+    elevation: {
+      enabled: target?.checked === true,
+    },
+  });
 };
 
 const onCanvasWheel = (event: CanvasWheelEvent) => {
@@ -428,6 +466,7 @@ onMounted(async () => {
   }
 
   await renderer.init(canvasElement);
+  syncRendererLayerConfig();
   cameraTiltDegrees.value = renderer.getTiltDegrees();
   cameraZoomLevel.value = renderer.getZoomLevel();
   renderer.setHoveredTileChangeHandler((nextHoveredTile) => {
@@ -497,12 +536,12 @@ onUnmounted(() => {
     ></canvas>
 
     <GButton class="mapgen-debug-toggle" @click="toggleMapgenDebugPanel">
-      {{ isMapgenDebugEnabled ? 'Hide Map Debug' : 'Show Map Debug' }}
+      {{ isMapgenDebugEnabled ? 'Hide Map + Renderer Debug' : 'Show Map + Renderer Debug' }}
     </GButton>
 
     <GPanel v-if="isMapgenDebugEnabled" class="mapgen-debug-panel">
       <div class="mapgen-debug-content">
-        <p class="mapgen-debug-kicker">Map Generation Debug</p>
+        <p class="mapgen-debug-kicker">Map + Renderer Debug</p>
         <p class="mapgen-debug-row">Algorithm: {{ lastGenerationRequest.algorithmId }}</p>
         <p class="mapgen-debug-row">Seed: {{ lastGenerationRequest.seedHash }}</p>
         <p class="mapgen-debug-row">
@@ -541,6 +580,32 @@ onUnmounted(() => {
         <label class="mapgen-debug-checkbox-row">
           <input type="checkbox" :checked="showDebugAxes" @change="setShowDebugAxes" />
           Show XYZ axis helper
+        </label>
+        <p class="mapgen-debug-row mapgen-debug-row-spaced">Renderer Layers</p>
+        <p class="mapgen-debug-note">Renderer-only toggles. Gameplay data stays unchanged.</p>
+        <label class="mapgen-debug-checkbox-row">
+          <input
+            type="checkbox"
+            :checked="rendererLayerConfig.tileColor.enabled"
+            @change="setTileColorLayerEnabled"
+          />
+          Show tile color fill
+        </label>
+        <label class="mapgen-debug-checkbox-row">
+          <input
+            type="checkbox"
+            :checked="rendererLayerConfig.hexOutline.enabled"
+            @change="setHexOutlineLayerEnabled"
+          />
+          Show hex outlines
+        </label>
+        <label class="mapgen-debug-checkbox-row">
+          <input
+            type="checkbox"
+            :checked="rendererLayerConfig.elevation.enabled"
+            @change="setElevationLayerEnabled"
+          />
+          Show elevation decorations
         </label>
 
         <div class="mapgen-debug-actions">
@@ -664,6 +729,13 @@ onUnmounted(() => {
 
 .mapgen-debug-row-spaced {
   margin-top: 0.2rem;
+}
+
+.mapgen-debug-note {
+  margin: -0.1rem 0 0;
+  color: rgba(214, 220, 232, 0.72);
+  font-size: 0.76rem;
+  line-height: 1.35;
 }
 
 .mapgen-debug-json {

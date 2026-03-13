@@ -10,10 +10,31 @@ import {
   POINTER_LOCK_PAN_SENSITIVITY,
 } from '~/game/render/cameraControls';
 import { getZoomTiltRadians } from '~/game/render/cameraTilt';
-import { DEFAULT_MAP_RENDER_CONFIG } from '~/game/render/mapRenderConfig';
+import {
+  DEFAULT_MAP_RENDER_CONFIG,
+  mergeMapRenderConfig,
+  normalizeMapRenderConfig,
+  type MapRenderConfig,
+  type MapRenderConfigInput,
+} from '~/game/render/mapRenderConfig';
 import { createSceneSetup, type ThreeSceneSetup } from '~/game/render/three/sceneSetup';
 
 type ArrowKey = 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown';
+
+type MapLayerLike = Pick<
+  MapLayer,
+  | 'group'
+  | 'clearHoveredTile'
+  | 'destroy'
+  | 'render'
+  | 'setHoveredTileChangeHandler'
+  | 'updateHoveredTileAtScreenPoint'
+>;
+
+type GameRendererDependencies = {
+  mapLayer?: MapLayerLike;
+  sceneSetupFactory?: typeof createSceneSetup;
+};
 
 export class GameRenderer {
   private static readonly MIN_CAMERA_Z = 1000;
@@ -28,7 +49,7 @@ export class GameRenderer {
   private static readonly MAX_FINAL_TILT_RADIANS = (78 * Math.PI) / 180;
   private static readonly DEBUG_AXES_SIZE = 360;
 
-  private readonly mapLayer = new MapLayer();
+  private readonly mapLayer: MapLayerLike;
   private readonly raycaster = new Raycaster();
   private readonly viewport = new Group();
   private readonly panGroup = new Group();
@@ -51,6 +72,7 @@ export class GameRenderer {
   private readonly zoomAnchorRayDirection = new Vector3();
   private readonly panDeltaLocal = new Vector3();
   private readonly panInverseQuaternion = new Quaternion();
+  private readonly sceneSetupFactory: typeof createSceneSetup;
   private sceneSetup: ThreeSceneSetup | null = null;
   private initialized = false;
   private debugCameraControlsEnabled = false;
@@ -63,8 +85,16 @@ export class GameRenderer {
   private previousFrameTime: number | null = null;
   private orbitYawRadians = 0;
   private orbitTiltOffsetRadians = 0;
+  private currentMapRenderConfig: MapRenderConfig =
+    normalizeMapRenderConfig(DEFAULT_MAP_RENDER_CONFIG);
+  private lastRenderedMap: GameMap | null = null;
 
-  constructor() {
+  constructor({
+    mapLayer = new MapLayer(),
+    sceneSetupFactory = createSceneSetup,
+  }: GameRendererDependencies = {}) {
+    this.mapLayer = mapLayer;
+    this.sceneSetupFactory = sceneSetupFactory;
     this.viewport.name = 'map-viewport';
     this.panGroup.name = 'map-pan-group';
     this.debugAxes.name = 'debug-axes';
@@ -80,7 +110,7 @@ export class GameRenderer {
       throw new Error('GameRenderer.init requires a canvas element.');
     }
 
-    this.sceneSetup = createSceneSetup(canvas);
+    this.sceneSetup = this.sceneSetupFactory(canvas);
     this.viewport.clear();
     this.panGroup.clear();
     this.viewport.position.set(0, 0, 0);
@@ -92,16 +122,41 @@ export class GameRenderer {
     this.sceneSetup.scene.add(this.viewport);
 
     this.initialized = true;
+
+    if (this.lastRenderedMap) {
+      this.mapLayer.render(this.lastRenderedMap, this.currentMapRenderConfig);
+      this.updateCameraDepthRange();
+    }
+
     this.animationFrameHandle = globalThis.window.requestAnimationFrame(this.handleFrame);
   }
 
   renderMap(map: GameMap) {
+    this.lastRenderedMap = map;
+
     if (!this.initialized) {
       return;
     }
 
-    this.mapLayer.render(map, DEFAULT_MAP_RENDER_CONFIG);
+    this.mapLayer.render(map, this.currentMapRenderConfig);
     this.updateCameraDepthRange();
+  }
+
+  setMapRenderConfig(config: MapRenderConfigInput) {
+    this.currentMapRenderConfig = normalizeMapRenderConfig(
+      mergeMapRenderConfig(this.currentMapRenderConfig, config),
+    );
+
+    if (!this.initialized || !this.lastRenderedMap) {
+      return;
+    }
+
+    this.mapLayer.render(this.lastRenderedMap, this.currentMapRenderConfig);
+    this.updateCameraDepthRange();
+  }
+
+  getMapRenderConfig(): MapRenderConfig {
+    return normalizeMapRenderConfig(this.currentMapRenderConfig);
   }
 
   setHoveredTileChangeHandler(handler: ((hoveredTile: HoveredTile | null) => void) | null) {
@@ -290,6 +345,8 @@ export class GameRenderer {
     this.pointerLocked = false;
     this.edgePointerPosition = null;
     this.edgePointerViewportSize = null;
+    this.lastRenderedMap = null;
+    this.currentMapRenderConfig = normalizeMapRenderConfig(DEFAULT_MAP_RENDER_CONFIG);
     this.clearArrowKeyPan();
     this.initialized = false;
   }

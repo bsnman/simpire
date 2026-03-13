@@ -247,12 +247,12 @@ Expose runtime config updates through `GameRenderer` and wire a caller path that
 
 The implementing agent must append remarks here before ending the phase:
 
-- Date:
-- Summary of what was actually implemented:
-- Deviations from this plan:
-- Known issues or shortcuts left in place:
-- Tests run:
-- Follow-up advice for Phase 3:
+- Date: March 13, 2026
+- Summary of what was actually implemented: Added renderer-owned map render config state to `GameRenderer`; exposed `setMapRenderConfig(...)` and `getMapRenderConfig()`; stored the last rendered map so runtime config changes redraw without regenerating map data; wired temporary renderer/debug checkboxes into `GameView.vue` so tile color, hex outlines, and elevation can be toggled independently at runtime; added `GameRenderer.spec.ts` covering redraw-on-config-change and partial-config merge behavior.
+- Deviations from this plan: Chose the lowest-risk temporary control surface in `GameView.vue` instead of introducing a dedicated renderer/debug preference store in Phase 2. `GameRenderer.setMapRenderConfig(...)` accepts the existing partial `MapRenderConfigInput` contract rather than a shallow `Partial<MapRenderConfig>` so nested layer updates remain type-safe.
+- Known issues or shortcuts left in place: Renderer layer toggle state is view-local and not persisted across page reloads. The debug panel is still named around map generation even though it now also hosts renderer-only controls. Full map redraw/rebuild remains the update path for config changes, which is acceptable at current prototype scale.
+- Tests run: `npx vitest run src/game/render/GameRenderer.spec.ts src/game/render/mapRenderConfig.spec.ts src/game/render/layers/MapLayer.spec.ts`, `npm run build`, `npm test` (still fails in unrelated `src/base/terrainFeatures.spec.ts`)
+- Follow-up advice for Phase 3: Consider splitting renderer debug controls into their own panel/store if they continue to grow, then harden cleanup/disposal paths and make the scene group naming even more explicit for Three.js inspector/debugging workflows.
 
 ## Phase 3: Hardening, Cleanup, And Documentation Sync
 
@@ -282,14 +282,12 @@ Stabilize naming, remove transitional code, and make the architecture obvious fo
 
 ### Phase 3 Handoff Notes
 
-The implementing agent must append remarks here before ending the phase:
-
-- Date:
-- Summary of what was actually implemented:
-- Deviations from this plan:
-- Known issues or shortcuts left in place:
-- Tests run:
-- Final architecture notes:
+- Date: March 13, 2026
+- Summary of what was actually implemented: Removed the unused transitional `MapLayer.setRenderConfig(...)` API; centralized deterministic map layer and per-object naming in `src/game/render/layers/mapLayerObjectNames.ts`; updated fill/outline/interaction/elevation render objects to use those names; hardened `TerrainDecorationFactory` so loaded template geometry/material/texture resources are disposed on destroy and late async template loads are disposed instead of being retained after teardown; cleaned the temporary debug panel copy in `GameView.vue` so it explicitly covers both map and renderer debugging; added Phase 3 tests for repeated config toggles/re-rendering and for terrain-decoration disposal/naming.
+- Deviations from this plan: Kept the existing temporary debug control surface in `GameView.vue` and the mapgen debug store instead of splitting renderer controls into a dedicated panel/store. Group-name hardening was implemented with shared constants rather than a broader renderer inspector utility layer.
+- Known issues or shortcuts left in place: Config changes and map changes still rebuild full layer object sets, which remains acceptable at current prototype scale. The debug toggle state is still view-local rather than persisted. `npm test` still has an unrelated baseline failure in `src/base/terrainFeatures.spec.ts`.
+- Tests run: `npx vitest run src/game/render/GameRenderer.spec.ts src/game/render/mapRenderConfig.spec.ts src/game/render/layers/MapLayer.spec.ts src/game/render/three/TerrainDecorationFactory.spec.ts`, `npm run build`, `npm test` (still fails in unrelated `src/base/terrainFeatures.spec.ts`)
+- Final architecture notes: `GameRenderer` owns renderer-only config and redraw orchestration; `MapLayer` remains the composite entry point; visual tile fill, outlines, and elevation decorations stay independent from the always-on `MapInteractionLayer`; shared deterministic names now make scene inspection and renderer tests target the same structure; terrain decoration asset cleanup is safe even when destroy happens before async model loads finish.
 
 ## Design Decisions The Next Agent Should Preserve
 

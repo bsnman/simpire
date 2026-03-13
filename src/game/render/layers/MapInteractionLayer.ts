@@ -1,6 +1,7 @@
 import { Group, type Mesh } from 'three';
 
 import type { GameMap } from '~/types/map';
+import { MAP_INTERACTION_LAYER_GROUP_NAME } from '~/game/render/layers/mapLayerObjectNames';
 import type { MapTileRenderData } from '~/game/render/layers/mapTileRenderData';
 import { HexInteractionMeshFactory } from '~/game/render/three/HexInteractionMeshFactory';
 
@@ -12,7 +13,7 @@ export class MapInteractionLayer {
 
   constructor(interactionMeshFactory: HexInteractionMeshFactory = new HexInteractionMeshFactory()) {
     this.interactionMeshFactory = interactionMeshFactory;
-    this.group.name = 'map-interaction-layer';
+    this.group.name = MAP_INTERACTION_LAYER_GROUP_NAME;
   }
 
   render(map: GameMap, tileRenderData: ReadonlyArray<MapTileRenderData>) {
