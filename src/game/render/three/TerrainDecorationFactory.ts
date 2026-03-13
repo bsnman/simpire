@@ -11,14 +11,14 @@ type PopulateTerrainDecorationsOptions = {
   map: GameMap;
   targetGroup: Group;
   isStale: () => boolean;
+  zOffset: number;
+  scaleMultiplier: number;
 };
 
 const TERRAIN_MODEL_PATHS: Partial<Record<ElevationType, string>> = {
   hill: '/models/terrain/hill.glb',
   mountain: '/models/terrain/mountain.glb',
 };
-
-const DECORATION_Z_OFFSET = 1;
 
 const hashHexKey = (key: HexKey): number => {
   let hash = 2166136261;
@@ -56,6 +56,8 @@ export class TerrainDecorationFactory {
     map,
     targetGroup,
     isStale,
+    zOffset,
+    scaleMultiplier,
   }: PopulateTerrainDecorationsOptions): Promise<void> {
     targetGroup.clear();
     await this.ensureTemplatesLoaded();
@@ -64,7 +66,7 @@ export class TerrainDecorationFactory {
       return;
     }
 
-    const scale = Math.max(1, map.tileSize) * 0.75;
+    const scale = Math.max(1, map.tileSize) * scaleMultiplier;
 
     for (const key of map.tileKeys) {
       if (isStale()) {
@@ -96,7 +98,7 @@ export class TerrainDecorationFactory {
       instance.position.set(
         center.x + map.origin.x + jitterX,
         center.y + map.origin.y + jitterY,
-        DECORATION_Z_OFFSET,
+        zOffset,
       );
       instance.rotation.set(0, 0, yaw);
       instance.scale.set(scale, scale, scale);

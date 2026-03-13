@@ -1,0 +1,243 @@
+import { Group, OrthographicCamera, Raycaster } from 'three';
+import { describe, expect, it, vi } from 'vitest';
+
+import { MapLayer } from '~/game/render/layers/MapLayer';
+import { TileElevationLayer, type TerrainDecorationFactoryLike } from '~/game/render/layers/TileElevationLayer';
+import {
+  DEFAULT_MAP_RENDER_CONFIG,
+  normalizeMapRenderConfig,
+  type MapRenderConfig,
+} from '~/game/render/mapRenderConfig';
+import { toHexKey } from '~/types/hex';
+import type { GameMap } from '~/types/map';
+
+class FakeTerrainDecorationFactory implements TerrainDecorationFactoryLike {
+  public readonly populateTerrainDecorations = vi.fn(
+    async ({ map, targetGroup, isStale }: Parameters<TerrainDecorationFactoryLike['populateTerrainDecorations']>[0]) => {
+      if (isStale()) {
+        return;
+      }
+
+      const hasElevationDecoration = map.tileKeys.some((key) => {
+        const tile = map.tilesByKey[key];
+        return tile?.elevation === 'hill' || tile?.elevation === 'mountain';
+      });
+
+      if (!hasElevationDecoration) {
+        return;
+      }
+
+      const decoration = new Group();
+      decoration.name = 'fake-terrain-decoration';
+      targetGroup.add(decoration);
+    },
+  );
+
+  public readonly destroy = vi.fn();
+}
+
+const TEST_MAP: GameMap = {
+  id: 'test-map',
+  layout: 'pointy',
+  tileSize: 50,
+  origin: { x: 0, y: 0 },
+  tileKeys: [toHexKey(0, 0)],
+  tilesByKey: {
+    [toHexKey(0, 0)]: {
+      q: 0,
+      r: 0,
+      terrain: 'grassland',
+      elevation: 'hill',
+    },
+  },
+};
+
+const getLayerGroup = (mapLayer: MapLayer, groupName: string): Group => {
+  const group = mapLayer.group.children.find((child) => child.name === groupName);
+
+  if (!(group instanceof Group)) {
+    throw new Error(`Expected layer group "${groupName}" to exist.`);
+  }
+
+  return group;
+};
+
+const expectLayerCounts = (
+  mapLayer: MapLayer,
+  counts: {
+    tileColor: number;
+    hexOutline: number;
+    elevation: number;
+    interaction: number;
+  },
+) => {
+  expect(getLayerGroup(mapLayer, 'map-tile-color-layer').children).toHaveLength(counts.tileColor);
+  expect(getLayerGroup(mapLayer, 'map-hex-outline-layer').children).toHaveLength(
+    counts.hexOutline,
+  );
+  expect(getLayerGroup(mapLayer, 'map-elevation-layer').children).toHaveLength(counts.elevation);
+  expect(getLayerGroup(mapLayer, 'map-interaction-layer').children).toHaveLength(
+    counts.interaction,
+  );
+};
+
+const createTestCamera = (): OrthographicCamera => {
+  const camera = new OrthographicCamera(-100, 100, 100, -100, 0.1, 500);
+
+  camera.position.set(0, 0, 100);
+  camera.lookAt(0, 0, 0);
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld(true);
+  return camera;
+};
+
+const createMapLayer = () => {
+  const terrainDecorationFactory = new FakeTerrainDecorationFactory();
+  const mapLayer = new MapLayer({
+    tileElevationLayer: new TileElevationLayer(terrainDecorationFactory),
+  });
+
+  return {
+    mapLayer,
+    terrainDecorationFactory,
+  };
+};
+
+describe('MapLayer', () => {
+  it('disables each visual layer independently without removing other layers', () => {
+    const { mapLayer, terrainDecorationFactory } = createMapLayer();
+
+    mapLayer.render(TEST_MAP, DEFAULT_MAP_RENDER_CONFIG);
+    expectLayerCounts(mapLayer, {
+      tileColor: 1,
+      hexOutline: 1,
+      elevation: 1,
+      interaction: 1,
+    });
+
+    mapLayer.render(
+      TEST_MAP,
+      normalizeMapRenderConfig({
+        tileColor: {
+          enabled: false,
+        },
+      }),
+    );
+    expectLayerCounts(mapLayer, {
+      tileColor: 0,
+      hexOutline: 1,
+      elevation: 1,
+      interaction: 1,
+    });
+
+    mapLayer.render(
+      TEST_MAP,
+      normalizeMapRenderConfig({
+        hexOutline: {
+          enabled: false,
+        },
+      }),
+    );
+    expectLayerCounts(mapLayer, {
+      tileColor: 1,
+      hexOutline: 0,
+      elevation: 1,
+      interaction: 1,
+    });
+
+    mapLayer.render(
+      TEST_MAP,
+      normalizeMapRenderConfig({
+        elevation: {
+          enabled: false,
+        },
+      }),
+    );
+    expectLayerCounts(mapLayer, {
+      tileColor: 1,
+      hexOutline: 1,
+      elevation: 0,
+      interaction: 1,
+    });
+
+    expect(terrainDecorationFactory.populateTerrainDecorations).toHaveBeenCalledTimes(3);
+  });
+
+  it('keeps hover picking working when tile color is disabled', () => {
+    const { mapLayer } = createMapLayer();
+    const camera = createTestCamera();
+    const raycaster = new Raycaster();
+    let hoveredTileKey: string | null = null;
+
+    mapLayer.setHoveredTileChangeHandler((hoveredTile) => {
+      hoveredTileKey = hoveredTile?.key ?? null;
+    });
+    mapLayer.render(
+      TEST_MAP,
+      normalizeMapRenderConfig({
+        tileColor: {
+          enabled: false,
+        },
+      }),
+    );
+
+    mapLayer.group.updateMatrixWorld(true);
+    mapLayer.updateHoveredTileAtScreenPoint({
+      screenX: 100,
+      screenY: 100,
+      viewportWidth: 200,
+      viewportHeight: 200,
+      camera,
+      raycaster,
+    });
+
+    expect(getLayerGroup(mapLayer, 'map-tile-color-layer').children).toHaveLength(0);
+    expect(getLayerGroup(mapLayer, 'map-interaction-layer').children).toHaveLength(1);
+    expect(hoveredTileKey).toBe('0,0');
+  });
+
+  it('keeps hover picking working when all visual layers are disabled', () => {
+    const { mapLayer } = createMapLayer();
+    const camera = createTestCamera();
+    const raycaster = new Raycaster();
+    let hoveredTileKey: string | null = null;
+
+    mapLayer.setHoveredTileChangeHandler((hoveredTile) => {
+      hoveredTileKey = hoveredTile?.key ?? null;
+    });
+
+    const hiddenVisualConfig: MapRenderConfig = normalizeMapRenderConfig({
+      tileColor: {
+        enabled: false,
+      },
+      hexOutline: {
+        enabled: false,
+      },
+      elevation: {
+        enabled: false,
+      },
+    });
+
+    mapLayer.render(TEST_MAP, hiddenVisualConfig);
+    mapLayer.group.updateMatrixWorld(true);
+    mapLayer.updateHoveredTileAtScreenPoint({
+      screenX: 100,
+      screenY: 100,
+      viewportWidth: 200,
+      viewportHeight: 200,
+      camera,
+      raycaster,
+    });
+
+    expectLayerCounts(mapLayer, {
+      tileColor: 0,
+      hexOutline: 0,
+      elevation: 0,
+      interaction: 1,
+    });
+    expect(hoveredTileKey).toBe('0,0');
+
+    mapLayer.clearHoveredTile();
+    expect(hoveredTileKey).toBeNull();
+  });
+});

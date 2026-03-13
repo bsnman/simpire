@@ -10,6 +10,7 @@ import {
   POINTER_LOCK_PAN_SENSITIVITY,
 } from '~/game/render/cameraControls';
 import { getZoomTiltRadians } from '~/game/render/cameraTilt';
+import { DEFAULT_MAP_RENDER_CONFIG } from '~/game/render/mapRenderConfig';
 import { createSceneSetup, type ThreeSceneSetup } from '~/game/render/three/sceneSetup';
 
 type ArrowKey = 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown';
@@ -33,11 +34,11 @@ export class GameRenderer {
   private readonly panGroup = new Group();
   private readonly debugAxes = new AxesHelper(GameRenderer.DEBUG_AXES_SIZE);
   private readonly mapDepthBounds = new Box3();
-  private readonly initialZoom = 0.62;
-  private readonly minZoom = 0.3;
+  private readonly initialZoom = 1;
+  private readonly minZoom = 0.5;
   private readonly maxZoom = 5;
-  private readonly tiltStartZoom = this.initialZoom;
-  private readonly tiltMaxZoom = this.maxZoom;
+  private readonly tiltStartZoom = this.initialZoom / 3;
+  private readonly tiltMaxZoom = this.maxZoom / 1.3;
   private readonly maxTiltRadians = (64 * Math.PI) / 180;
   private readonly zoomAnchorNdc = new Vector2();
   private readonly zoomAnchorPlane = new Plane();
@@ -99,7 +100,7 @@ export class GameRenderer {
       return;
     }
 
-    this.mapLayer.render(map);
+    this.mapLayer.render(map, DEFAULT_MAP_RENDER_CONFIG);
     this.updateCameraDepthRange();
   }
 

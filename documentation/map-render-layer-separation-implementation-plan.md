@@ -208,12 +208,12 @@ Split `MapLayer` into sublayers and add the renderer config contracts, but keep 
 
 The implementing agent must append remarks here before ending the phase:
 
-- Date:
-- Summary of what was actually implemented:
-- Deviations from this plan:
-- Known issues or shortcuts left in place:
-- Tests run:
-- Follow-up advice for Phase 2:
+- Date: March 13, 2026
+- Summary of what was actually implemented: Added `mapRenderConfig.ts` with defaults plus normalize/merge helpers; split fill, outline, elevation, and hover-hit responsibilities into `TileColorLayer`, `HexOutlineLayer`, `TileElevationLayer`, and `MapInteractionLayer`; refactored `MapLayer` into a composite orchestrator; split fill versus outline factory responsibilities; updated `TerrainDecorationFactory` to receive elevation layer config; kept `GameRenderer.renderMap(map)` working with default config; added Phase 1 renderer tests for config merging, independent layer visibility, and hover picking with visual layers disabled.
+- Deviations from this plan: Used dedicated helper factories (`HexOutlineMeshFactory`, `HexInteractionMeshFactory`) instead of exposing multiple creation methods from one factory. `MapLayer.setRenderConfig(...)` was added internally ahead of Phase 2, but no public `GameRenderer` config API or UI wiring was introduced.
+- Known issues or shortcuts left in place: The repo-wide `/...` import alias standard still conflicts with the actual configured `~/*` alias, so this phase kept the existing alias style rather than broadening scope into toolchain/import migration. Layer updates still rebuild full object sets, which remains acceptable for the current prototype stage.
+- Tests run: `npm test` (renderer tests passed, suite still has an unrelated failure in `src/base/terrainFeatures.spec.ts`), `npx vitest run src/game/render/mapRenderConfig.spec.ts src/game/render/layers/MapLayer.spec.ts`, `npm run build`
+- Follow-up advice for Phase 2: Store the normalized config in `GameRenderer`, expose `setMapRenderConfig(...)` and `getMapRenderConfig()`, and wire a renderer/debug-only control surface that toggles layers without touching gameplay state.
 
 ## Phase 2: Renderer API And View-Level Control Wiring
 
@@ -318,4 +318,3 @@ The implementing agent must append remarks here before ending the phase:
 1. Implement Phase 1 only.
 2. Update this document's Phase 1 handoff notes with concrete remarks.
 3. Stop after tests pass and leave Phase 2 for the following agent unless there is still clear time and no unresolved renderer regressions.
-

@@ -1,14 +1,18 @@
-import { Group, type Camera, type Mesh, type Raycaster } from 'three';
+import { Group, type Camera, type Raycaster } from 'three';
 
-import { tiles } from '~/base/tiles';
-import { fromHexKey, type HexKey } from '~/types/hex';
+import type { HexKey } from '~/types/hex';
 import type { GameMap, MapTile } from '~/types/map';
-import { axialToPixel } from '~/game/render/hexMath';
-import { TerrainDecorationFactory } from '~/game/render/three/TerrainDecorationFactory';
-import { HexTileMeshFactory } from '~/game/render/three/HexTileMeshFactory';
+import { buildMapTileRenderData } from '~/game/render/layers/mapTileRenderData';
+import { HexOutlineLayer } from '~/game/render/layers/HexOutlineLayer';
+import { MapInteractionLayer } from '~/game/render/layers/MapInteractionLayer';
+import { TileColorLayer } from '~/game/render/layers/TileColorLayer';
+import { TileElevationLayer } from '~/game/render/layers/TileElevationLayer';
+import {
+  DEFAULT_MAP_RENDER_CONFIG,
+  normalizeMapRenderConfig,
+  type MapRenderConfig,
+} from '~/game/render/mapRenderConfig';
 import { pickHexKeyAtScreenPoint } from '~/game/render/three/raycast';
-
-const FALLBACK_TILE_COLOR = '#6B7280';
 
 type HoverUpdateContext = {
   screenX: number;
@@ -24,61 +28,59 @@ export type HoveredTile = {
   tile: MapTile;
 };
 
+type MapLayerDependencies = {
+  tileColorLayer?: TileColorLayer;
+  hexOutlineLayer?: HexOutlineLayer;
+  tileElevationLayer?: TileElevationLayer;
+  interactionLayer?: MapInteractionLayer;
+};
+
 export class MapLayer {
   public readonly group = new Group();
 
-  private readonly tileMeshFactory = new HexTileMeshFactory();
-  private readonly terrainDecorationFactory = new TerrainDecorationFactory();
+  private readonly tileColorLayer: TileColorLayer;
+  private readonly hexOutlineLayer: HexOutlineLayer;
+  private readonly tileElevationLayer: TileElevationLayer;
+  private readonly interactionLayer: MapInteractionLayer;
+
   private currentMap: GameMap | null = null;
+  private currentRenderConfig: MapRenderConfig = normalizeMapRenderConfig(DEFAULT_MAP_RENDER_CONFIG);
   private hoveredTileKey: HexKey | null = null;
   private hoveredTileChangeHandler: ((hoveredTile: HoveredTile | null) => void) | null = null;
-  private raycastTargets: Mesh[] = [];
-  private decorationRenderToken = 0;
 
-  constructor() {
+  constructor({
+    tileColorLayer = new TileColorLayer(),
+    hexOutlineLayer = new HexOutlineLayer(),
+    tileElevationLayer = new TileElevationLayer(),
+    interactionLayer = new MapInteractionLayer(),
+  }: MapLayerDependencies = {}) {
+    this.tileColorLayer = tileColorLayer;
+    this.hexOutlineLayer = hexOutlineLayer;
+    this.tileElevationLayer = tileElevationLayer;
+    this.interactionLayer = interactionLayer;
     this.group.name = 'map-layer';
+    this.group.add(
+      this.tileColorLayer.group,
+      this.hexOutlineLayer.group,
+      this.tileElevationLayer.group,
+      this.interactionLayer.group,
+    );
   }
 
-  render(map: GameMap) {
+  render(map: GameMap, config: MapRenderConfig = DEFAULT_MAP_RENDER_CONFIG) {
     this.currentMap = map;
-    this.group.clear();
-    this.raycastTargets = [];
+    this.currentRenderConfig = normalizeMapRenderConfig(config);
+    this.renderCurrentMap();
+  }
 
-    for (const key of map.tileKeys) {
-      const tile = map.tilesByKey[key];
-      const { q, r } = tile ?? fromHexKey(key);
-      const center = axialToPixel({ q, r }, map.tileSize, map.layout);
-      const tileColor = tile ? tiles[tile.terrain].color : FALLBACK_TILE_COLOR;
-      const mesh = this.tileMeshFactory.createTileMesh(map.tileSize, map.layout, tileColor, key);
+  setRenderConfig(config: MapRenderConfig) {
+    this.currentRenderConfig = normalizeMapRenderConfig(config);
 
-      mesh.position.set(center.x + map.origin.x, center.y + map.origin.y, 0);
-
-      this.group.add(mesh);
-      this.raycastTargets.push(mesh);
+    if (!this.currentMap) {
+      return;
     }
 
-    const decorationGroup = new Group();
-    decorationGroup.name = 'terrain-decoration-layer';
-    this.group.add(decorationGroup);
-
-    const renderToken = ++this.decorationRenderToken;
-
-    void this.terrainDecorationFactory.populateTerrainDecorations({
-      map,
-      targetGroup: decorationGroup,
-      isStale: () => renderToken !== this.decorationRenderToken,
-    });
-
-    if (this.hoveredTileKey) {
-      const hoveredTile = map.tilesByKey[this.hoveredTileKey];
-
-      if (!hoveredTile) {
-        this.updateHoveredTileKey(null);
-        return;
-      }
-
-      this.notifyHoveredTileChange(this.hoveredTileKey, hoveredTile);
-    }
+    this.renderCurrentMap();
   }
 
   setHoveredTileChangeHandler(handler: ((hoveredTile: HoveredTile | null) => void) | null) {
@@ -117,7 +119,7 @@ export class MapLayer {
       viewportHeight,
       camera,
       raycaster,
-      targets: this.raycastTargets,
+      targets: this.interactionLayer.getRaycastTargets(),
     });
     const tile = key ? this.currentMap.tilesByKey[key] : undefined;
 
@@ -129,14 +131,44 @@ export class MapLayer {
   }
 
   destroy() {
-    this.decorationRenderToken += 1;
-    this.group.clear();
-    this.tileMeshFactory.destroy();
-    this.terrainDecorationFactory.destroy();
+    this.tileColorLayer.destroy();
+    this.hexOutlineLayer.destroy();
+    this.tileElevationLayer.destroy();
+    this.interactionLayer.destroy();
     this.currentMap = null;
+    this.currentRenderConfig = normalizeMapRenderConfig(DEFAULT_MAP_RENDER_CONFIG);
     this.hoveredTileKey = null;
     this.hoveredTileChangeHandler = null;
-    this.raycastTargets = [];
+  }
+
+  private renderCurrentMap() {
+    if (!this.currentMap) {
+      return;
+    }
+
+    const tileRenderData = buildMapTileRenderData(this.currentMap);
+
+    this.interactionLayer.render(this.currentMap, tileRenderData);
+    this.tileColorLayer.render(this.currentMap, tileRenderData, this.currentRenderConfig.tileColor);
+    this.hexOutlineLayer.render(
+      this.currentMap,
+      tileRenderData,
+      this.currentRenderConfig.hexOutline,
+    );
+    this.tileElevationLayer.render(this.currentMap, this.currentRenderConfig.elevation);
+
+    if (!this.hoveredTileKey) {
+      return;
+    }
+
+    const hoveredTile = this.currentMap.tilesByKey[this.hoveredTileKey];
+
+    if (!hoveredTile) {
+      this.updateHoveredTileKey(null);
+      return;
+    }
+
+    this.notifyHoveredTileChange(this.hoveredTileKey, hoveredTile);
   }
 
   private updateHoveredTileKey(nextHoveredTileKey: HexKey | null) {

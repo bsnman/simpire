@@ -16,7 +16,7 @@ type PickHexKeyAtScreenPointParams = {
   viewportHeight: number;
   camera: Camera;
   raycaster: Raycaster;
-  targets: Object3D[];
+  targets: ReadonlyArray<Object3D>;
 };
 
 const asHexKey = (value: unknown): HexKey | null => {
@@ -99,5 +99,5 @@ export const pickHexKeyAtScreenPoint = ({
 
   const ndc = screenPointToNdc(screenX, screenY, viewportWidth, viewportHeight);
   raycaster.setFromCamera(new Vector2(ndc.x, ndc.y), camera);
-  return findFirstHexKeyInIntersections(raycaster.intersectObjects(targets, true));
+  return findFirstHexKeyInIntersections(raycaster.intersectObjects(Array.from(targets), true));
 };
