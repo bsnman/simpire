@@ -27,20 +27,10 @@ import GTextInput from '~/components/ui/GTextInput.vue';
 import { orientImportedGltfRoot } from '~/game/render/three/modelOrientation';
 
 const FALLBACK_MODEL_PATHS = [
-  '/models/terrain/hill-v2.1.glb',
-  '/models/terrain/hill-v2.2.glb',
-  '/models/terrain/hill-v2.3.glb',
-  '/models/terrain/hill-v2.glb',
-  '/models/terrain/hill-v3.glb',
-  '/models/terrain/hill-v4.1.glb',
   '/models/terrain/hill-v4.2.glb',
-  '/models/terrain/hill-v4.3.glb',
-  '/models/terrain/hill-v4.4.glb',
-  '/models/terrain/hill-v4.5.glb',
   '/models/terrain/hill-v4.6.glb',
-  '/models/terrain/hill.glb',
-  '/models/terrain/mountain.glb',
-  '/models/terrain/mountain-v3.glb',
+  '/models/terrain/hill-v5.glb',
+  '/models/terrain/mountain-v5.glb',
 ] as const;
 const MIN_MODEL_SCALE = 0.1;
 const DEFAULT_MODEL_SCALE = 1;

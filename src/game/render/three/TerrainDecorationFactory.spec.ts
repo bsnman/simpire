@@ -11,8 +11,8 @@ import {
 import { toHexKey } from '~/types/hex';
 import type { GameMap } from '~/types/map';
 
-const HILL_MODEL_PATH = '/models/terrain/hill-v4.3.glb';
-const MOUNTAIN_MODEL_PATH = '/models/terrain/hill-v4.6.glb';
+const HILL_MODEL_PATH = '/models/terrain/hill-v5.glb';
+const MOUNTAIN_MODEL_PATH = '/models/terrain/mountain-v5.glb';
 
 const createTestMap = (elevation: 'hill' | 'mountain'): GameMap => ({
   id: 'terrain-decoration-test-map',

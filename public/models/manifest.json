@@ -1,19 +1,8 @@
 {
   "models": [
-    "/models/terrain/hill-v2.1.glb",
-    "/models/terrain/hill-v2.2.glb",
-    "/models/terrain/hill-v2.3.glb",
-    "/models/terrain/hill-v2.glb",
-
-    "/models/terrain/hill-v3.glb",
-    "/models/terrain/hill-v4.1.glb",
     "/models/terrain/hill-v4.2.glb",
-    "/models/terrain/hill-v4.3.glb",
-    "/models/terrain/hill-v4.4.glb",
-    "/models/terrain/hill-v4.5.glb",
     "/models/terrain/hill-v4.6.glb",
-    "/models/terrain/hill.glb",
-    "/models/terrain/mountain.glb",
-    "/models/terrain/mountain-v3.glb"
+    "/models/terrain/hill-v5.glb",
+    "/models/terrain/mountain-v5.glb"
   ]
 }
