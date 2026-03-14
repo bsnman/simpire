@@ -33,7 +33,11 @@ class FakeTerrainDecorationFactory implements TerrainDecorationFactoryLike {
 
       const hasElevationDecoration = map.tileKeys.some((key) => {
         const tile = map.tilesByKey[key];
-        return tile?.elevation === 'hill' || tile?.elevation === 'mountain';
+        return (
+          tile?.elevation === 'flat' ||
+          tile?.elevation === 'hill' ||
+          tile?.elevation === 'mountain'
+        );
       });
 
       if (!hasElevationDecoration) {
@@ -61,6 +65,19 @@ const TEST_MAP: GameMap = {
       r: 0,
       terrain: 'grassland',
       elevation: 'hill',
+    },
+  },
+};
+
+const FLAT_TEST_MAP: GameMap = {
+  ...TEST_MAP,
+  id: 'flat-test-map',
+  tilesByKey: {
+    [toHexKey(0, 0)]: {
+      q: 0,
+      r: 0,
+      terrain: 'grassland',
+      elevation: 'flat',
     },
   },
 };
@@ -121,6 +138,19 @@ const createMapLayer = () => {
 };
 
 describe('MapLayer', () => {
+  it('renders elevation decorations for flat tiles when a flat decoration model is registered', () => {
+    const { mapLayer } = createMapLayer();
+
+    mapLayer.render(FLAT_TEST_MAP, DEFAULT_MAP_RENDER_CONFIG);
+
+    expectLayerCounts(mapLayer, {
+      tileColor: 1,
+      hexOutline: 1,
+      elevation: 1,
+      interaction: 1,
+    });
+  });
+
   it('disables each visual layer independently without removing other layers', () => {
     const { mapLayer, terrainDecorationFactory } = createMapLayer();
 

@@ -27,6 +27,8 @@ import GTextInput from '~/components/ui/GTextInput.vue';
 import { orientImportedGltfRoot } from '~/game/render/three/modelOrientation';
 
 const FALLBACK_MODEL_PATHS = [
+  '/models/terrain-features/forest-pine-v1-source.glb',
+  '/models/terrain/flatground-v1-source.glb',
   '/models/terrain/hill-v4.2.glb',
   '/models/terrain/hill-v4.6.glb',
   '/models/terrain/hill-v5.glb',
