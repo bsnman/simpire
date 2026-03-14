@@ -8,6 +8,7 @@ export type TileColorLayerConfig = {
 export type HexOutlineLayerConfig = {
   enabled: boolean;
   color: string;
+  thickness: number;
   zOffset: number;
 };
 
@@ -36,7 +37,8 @@ export const DEFAULT_MAP_RENDER_CONFIG: MapRenderConfig = {
   },
   hexOutline: {
     enabled: true,
-    color: '#1D1D1D',
+    color: '#5D5D5D',
+    thickness: 1,
     zOffset: 0.05,
   },
   elevation: {
@@ -59,6 +61,7 @@ const normalizeHexOutlineLayerConfig = (
 ): HexOutlineLayerConfig => ({
   enabled: config?.enabled ?? DEFAULT_MAP_RENDER_CONFIG.hexOutline.enabled,
   color: config?.color ?? DEFAULT_MAP_RENDER_CONFIG.hexOutline.color,
+  thickness: config?.thickness ?? DEFAULT_MAP_RENDER_CONFIG.hexOutline.thickness,
   zOffset: config?.zOffset ?? DEFAULT_MAP_RENDER_CONFIG.hexOutline.zOffset,
 });
 

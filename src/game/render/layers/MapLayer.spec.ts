@@ -237,7 +237,39 @@ describe('MapLayer', () => {
     });
 
     expect(getLayerGroup(mapLayer, MAP_TILE_COLOR_LAYER_GROUP_NAME).children).toHaveLength(0);
+    expect(getLayerGroup(mapLayer, MAP_HEX_OUTLINE_LAYER_GROUP_NAME).children).toHaveLength(1);
+    expect(getLayerGroup(mapLayer, MAP_ELEVATION_LAYER_GROUP_NAME).children).toHaveLength(1);
     expect(getLayerGroup(mapLayer, MAP_INTERACTION_LAYER_GROUP_NAME).children).toHaveLength(1);
+    expect(hoveredTileKey).toBe('0,0');
+  });
+
+  it('keeps hover picking working with elevation decorations and hex outlines enabled', () => {
+    const { mapLayer } = createMapLayer();
+    const camera = createTestCamera();
+    const raycaster = new Raycaster();
+    let hoveredTileKey: string | null = null;
+
+    mapLayer.setHoveredTileChangeHandler((hoveredTile) => {
+      hoveredTileKey = hoveredTile?.key ?? null;
+    });
+    mapLayer.render(TEST_MAP, DEFAULT_MAP_RENDER_CONFIG);
+
+    mapLayer.group.updateMatrixWorld(true);
+    mapLayer.updateHoveredTileAtScreenPoint({
+      screenX: 100,
+      screenY: 100,
+      viewportWidth: 200,
+      viewportHeight: 200,
+      camera,
+      raycaster,
+    });
+
+    expectLayerCounts(mapLayer, {
+      tileColor: 1,
+      hexOutline: 1,
+      elevation: 1,
+      interaction: 1,
+    });
     expect(hoveredTileKey).toBe('0,0');
   });
 

@@ -6,8 +6,8 @@ const MAX_DEVICE_PIXEL_RATIO = 2;
 const SKY_LIGHT_COLOR = 0xcddcf5;
 const GROUND_BOUNCE_COLOR = 0x3d3128;
 const SUN_LIGHT_COLOR = 0xfff3d8;
-const HEMISPHERE_INTENSITY = 10;
-const SUNLIGHT_INTENSITY = 1;
+const HEMISPHERE_INTENSITY = 8;
+const SUNLIGHT_INTENSITY = 3.5;
 
 type ViewportSize = {
   width: number;
@@ -57,11 +57,11 @@ export const createSceneSetup = (canvas: HTMLCanvasElement): ThreeSceneSetup => 
     GROUND_BOUNCE_COLOR,
     HEMISPHERE_INTENSITY,
   );
-  hemisphereLight.position.set(0, 1000, 0);
+  hemisphereLight.position.set(100, 0, -100);
   scene.add(hemisphereLight);
 
   const sunLight = new DirectionalLight(SUN_LIGHT_COLOR, SUNLIGHT_INTENSITY);
-  sunLight.position.set(0, 2000, 0);
+  sunLight.position.set(1000, 0, 0);
   sunLight.target.position.set(0, 0, 0);
   scene.add(sunLight);
   scene.add(sunLight.target);

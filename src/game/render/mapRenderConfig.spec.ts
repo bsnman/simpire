@@ -39,6 +39,7 @@ describe('mapRenderConfig', () => {
       mergeMapRenderConfig(currentConfig, {
         hexOutline: {
           color: '#abcdef',
+          thickness: 4,
         },
         elevation: {
           enabled: false,
@@ -52,12 +53,30 @@ describe('mapRenderConfig', () => {
       hexOutline: {
         ...DEFAULT_MAP_RENDER_CONFIG.hexOutline,
         color: '#abcdef',
+        thickness: 4,
       },
       elevation: {
         enabled: false,
         zOffset: DEFAULT_MAP_RENDER_CONFIG.elevation.zOffset,
         scaleMultiplier: 1.25,
       },
+    });
+  });
+
+  it('fills missing outline thickness from defaults', () => {
+    expect(
+      normalizeMapRenderConfig({
+        hexOutline: {
+          color: '#abcdef',
+        },
+      }),
+    ).toEqual({
+      tileColor: DEFAULT_MAP_RENDER_CONFIG.tileColor,
+      hexOutline: {
+        ...DEFAULT_MAP_RENDER_CONFIG.hexOutline,
+        color: '#abcdef',
+      },
+      elevation: DEFAULT_MAP_RENDER_CONFIG.elevation,
     });
   });
 });

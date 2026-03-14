@@ -32,6 +32,7 @@ export class HexOutlineLayer {
         map.tileSize,
         map.layout,
         config.color,
+        config.thickness,
         tileData.key,
       );
 
