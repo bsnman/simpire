@@ -144,17 +144,35 @@ const roundedTopShelf = (radius, plateauRadius, blendRadius, amplitude) => {
   return amplitude * (plateau * 0.4 + shoulder * 0.6);
 };
 
-const buildOpenHillGeometry = (heightAt) => {
+const smoothCapToPlateau = (rawHeight, plateauHeight, blendDepth) => {
+  const blendStart = Math.max(0, plateauHeight - blendDepth);
+
+  if (rawHeight <= blendStart) {
+    return rawHeight;
+  }
+
+  if (rawHeight >= plateauHeight) {
+    return plateauHeight;
+  }
+
+  const blend = smoothstep(blendStart, plateauHeight, rawHeight);
+  return rawHeight + (plateauHeight - rawHeight) * blend;
+};
+
+const buildOpenHillGeometry = ({ heightAt, plateauCutRatio, plateauBlendFraction }) => {
   const positions = [];
   const indices = [];
   const ringOffsets = [];
+  const summitHeight = heightAt(0, 0, 0, 0);
+  const plateauHeight = summitHeight * plateauCutRatio;
+  const plateauBlendDepth = summitHeight * plateauBlendFraction;
 
   for (let ring = 0; ring <= RINGS; ring += 1) {
     const radius = ring / RINGS;
     ringOffsets.push(positions.length / 3);
 
     if (ring === 0) {
-      positions.push(0, 0, heightAt(0, 0, 0, 0));
+      positions.push(0, 0, plateauHeight);
       continue;
     }
 
@@ -162,7 +180,9 @@ const buildOpenHillGeometry = (heightAt) => {
       const angle = (segment / SEGMENTS) * Math.PI * 2;
       const x = Math.cos(angle) * radius;
       const y = Math.sin(angle) * radius;
-      positions.push(x, y, heightAt(x, y, radius, angle));
+      const rawHeight = heightAt(x, y, radius, angle);
+      const height = smoothCapToPlateau(rawHeight, plateauHeight, plateauBlendDepth);
+      positions.push(x, y, height);
     }
   }
 
@@ -421,42 +441,65 @@ const HILL_VARIANTS = [
     name: 'hill-v4.1',
     color: '#95825f',
     targetPeakHeight: 0.45,
+    plateauCutRatio: 0.78,
+    plateauBlendFraction: 0.12,
     heightAt: buildShieldHillHeight,
   },
   {
     name: 'hill-v4.2',
     color: '#917d5b',
     targetPeakHeight: 0.62,
+    plateauCutRatio: 0.76,
+    plateauBlendFraction: 0.13,
     heightAt: buildRollingDomeHeight,
   },
   {
     name: 'hill-v4.3',
     color: '#8d7758',
     targetPeakHeight: 0.78,
+    plateauCutRatio: 0.74,
+    plateauBlendFraction: 0.14,
     heightAt: buildTwinKnollHeight,
   },
   {
     name: 'hill-v4.4',
     color: '#886f54',
     targetPeakHeight: 0.94,
+    plateauCutRatio: 0.72,
+    plateauBlendFraction: 0.14,
     heightAt: buildElongatedSaddleHeight,
   },
   {
     name: 'hill-v4.5',
     color: '#846a50',
     targetPeakHeight: 1.1,
+    plateauCutRatio: 0.7,
+    plateauBlendFraction: 0.15,
     heightAt: buildOffsetShoulderHeight,
   },
   {
     name: 'hill-v4.6',
     color: '#80654c',
     targetPeakHeight: 1.28,
+    plateauCutRatio: 0.68,
+    plateauBlendFraction: 0.16,
     heightAt: buildRoundedHighlandHeight,
   },
 ];
 
-const exportVariant = async ({ name, color, targetPeakHeight, heightAt }) => {
-  const geometry = buildOpenHillGeometry(heightAt);
+const exportVariant = async ({
+  name,
+  color,
+  targetPeakHeight,
+  heightAt,
+  plateauCutRatio,
+  plateauBlendFraction,
+}) => {
+  const geometry = buildOpenHillGeometry({
+    heightAt,
+    plateauCutRatio,
+    plateauBlendFraction,
+  });
   const peakHeight = normalizePeakHeight(geometry, targetPeakHeight);
   const material = new MeshStandardMaterial({
     color: new Color(color),
