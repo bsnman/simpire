@@ -92,4 +92,8 @@ Keep the `v4` generator so the procedural candidate set can be regenerated. Do n
 5. Record the promotion lineage:
    - `forest-pine-v1-source.glb` -> `forest-pine-v1.glb`
 
+Current renderer note:
+
+- Until `forest-pine-v1.glb` exists, the terrain-feature layer intentionally loads `forest-pine-v1-source.glb` as the active forest runtime model.
+
 This `terrain-features` directory is the canonical home for future forest, jungle, bamboo, and reeds source/runtime models.

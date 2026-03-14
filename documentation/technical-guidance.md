@@ -80,6 +80,7 @@ Suggested pattern:
 - Renderer world convention is `Z-up`: tiles live on the `XY` plane and height/elevation offsets use `Z`.
 - GLB assets on disk should follow standard glTF orientation; apply one shared import correction when loading them into the renderer's `Z-up` world.
 - Render map first, then terrain features, then resources, then units, then overlays/UI layer.
+- Keep terrain-feature rendering in its own renderer layer with renderer-only model and placement definitions; do not push asset metadata into domain `terrainFeatures`.
 - When visual layers can be disabled, keep hover/raycast targets in a separate non-visual interaction layer so picking does not depend on visible meshes.
 - Handle view-only controls such as zoom/pan (do not store these in Pinia game state).
 - Do not mutate game rules state; only reflect current state visually.
@@ -136,6 +137,7 @@ This keeps rows visually aligned while still storing canonical axial coordinates
 - `Z-up` world space with tile geometry on the `XY` plane and elevation on `Z`
 - Shared glTF import correction so standard-oriented assets display upright in the renderer and model-debug view
 - `TileColorLayer`, `HexOutlineLayer`, `TileElevationLayer`, and `MapInteractionLayer` behind `MapLayer`
+- `TerrainFeatureLayer` now sits behind `MapLayer` after elevation decorations and before future resource/unit layers
 - Wheel zoom handled in the game view/renderer boundary
 - Deterministic map generation registry in `src/game/mapgen` with plugin-ready algorithm contracts
 - Next renderer step is incremental updates and additional layers (units/resources/overlays).

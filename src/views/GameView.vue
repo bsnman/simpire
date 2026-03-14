@@ -276,6 +276,15 @@ const setElevationLayerEnabled = (event: { target: unknown }) => {
   });
 };
 
+const setTerrainFeatureLayerEnabled = (event: { target: unknown }) => {
+  const target = event.target as { checked?: unknown } | null;
+  updateRendererLayerConfig({
+    terrainFeature: {
+      enabled: target?.checked === true,
+    },
+  });
+};
+
 const onCanvasWheel = (event: CanvasWheelEvent) => {
   event.preventDefault();
 
@@ -606,6 +615,14 @@ onUnmounted(() => {
             @change="setElevationLayerEnabled"
           />
           Show elevation decorations
+        </label>
+        <label class="mapgen-debug-checkbox-row">
+          <input
+            type="checkbox"
+            :checked="rendererLayerConfig.terrainFeature.enabled"
+            @change="setTerrainFeatureLayerEnabled"
+          />
+          Show terrain features
         </label>
 
         <div class="mapgen-debug-actions">

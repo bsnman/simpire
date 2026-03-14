@@ -6,6 +6,7 @@ import { buildMapTileRenderData } from '~/game/render/layers/mapTileRenderData';
 import { MAP_LAYER_GROUP_NAME } from '~/game/render/layers/mapLayerObjectNames';
 import { HexOutlineLayer } from '~/game/render/layers/HexOutlineLayer';
 import { MapInteractionLayer } from '~/game/render/layers/MapInteractionLayer';
+import { TerrainFeatureLayer } from '~/game/render/layers/TerrainFeatureLayer';
 import { TileColorLayer } from '~/game/render/layers/TileColorLayer';
 import { TileElevationLayer } from '~/game/render/layers/TileElevationLayer';
 import {
@@ -33,6 +34,7 @@ type MapLayerDependencies = {
   tileColorLayer?: TileColorLayer;
   hexOutlineLayer?: HexOutlineLayer;
   tileElevationLayer?: TileElevationLayer;
+  terrainFeatureLayer?: TerrainFeatureLayer;
   interactionLayer?: MapInteractionLayer;
 };
 
@@ -42,6 +44,7 @@ export class MapLayer {
   private readonly tileColorLayer: TileColorLayer;
   private readonly hexOutlineLayer: HexOutlineLayer;
   private readonly tileElevationLayer: TileElevationLayer;
+  private readonly terrainFeatureLayer: TerrainFeatureLayer;
   private readonly interactionLayer: MapInteractionLayer;
 
   private currentMap: GameMap | null = null;
@@ -54,17 +57,20 @@ export class MapLayer {
     tileColorLayer = new TileColorLayer(),
     hexOutlineLayer = new HexOutlineLayer(),
     tileElevationLayer = new TileElevationLayer(),
+    terrainFeatureLayer = new TerrainFeatureLayer(),
     interactionLayer = new MapInteractionLayer(),
   }: MapLayerDependencies = {}) {
     this.tileColorLayer = tileColorLayer;
     this.hexOutlineLayer = hexOutlineLayer;
     this.tileElevationLayer = tileElevationLayer;
+    this.terrainFeatureLayer = terrainFeatureLayer;
     this.interactionLayer = interactionLayer;
     this.group.name = MAP_LAYER_GROUP_NAME;
     this.group.add(
       this.tileColorLayer.group,
       this.hexOutlineLayer.group,
       this.tileElevationLayer.group,
+      this.terrainFeatureLayer.group,
       this.interactionLayer.group,
     );
   }
@@ -126,6 +132,7 @@ export class MapLayer {
     this.tileColorLayer.destroy();
     this.hexOutlineLayer.destroy();
     this.tileElevationLayer.destroy();
+    this.terrainFeatureLayer.destroy();
     this.interactionLayer.destroy();
     this.currentMap = null;
     this.currentRenderConfig = normalizeMapRenderConfig(DEFAULT_MAP_RENDER_CONFIG);
@@ -148,6 +155,12 @@ export class MapLayer {
       this.currentRenderConfig.hexOutline,
     );
     this.tileElevationLayer.render(this.currentMap, this.currentRenderConfig.elevation);
+    this.terrainFeatureLayer.render(
+      this.currentMap,
+      tileRenderData,
+      this.currentRenderConfig.terrainFeature,
+      this.currentRenderConfig.elevation,
+    );
 
     if (!this.hoveredTileKey) {
       return;

@@ -2,6 +2,7 @@ import {
   BufferGeometry,
   Color,
   DoubleSide,
+  FrontSide,
   Group,
   Texture,
   type Material,
@@ -177,7 +178,7 @@ export class TerrainDecorationFactory {
       );
       instance.rotation.z = yaw;
       instance.scale.set(scale, scale, scale);
-      this.applyTerrainTint(instance, terrainTint, tile.elevation);
+      this.applyTerrainTint(instance, terrainTint);
       targetGroup.add(instance);
     }
   }
@@ -274,7 +275,7 @@ export class TerrainDecorationFactory {
     this.templates.clear();
   }
 
-  private applyTerrainTint(instance: Object3D, tint: Color, elevation: ElevationType) {
+  private applyTerrainTint(instance: Object3D, tint: Color) {
     instance.traverse((node) => {
       const mesh = node as Mesh;
 

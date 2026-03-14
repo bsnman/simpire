@@ -27,6 +27,7 @@ Follow these project-specific instructions when working in this repo.
 - Landmass macro controls must support both exact count (`landmassCount`) and deterministic range (`landmassCountMin`/`landmassCountMax`) plus `landmassSize` so continent/island scale is configurable without per-generator UI special-casing.
 - Model base tile terrain (biome/water) separately from elevation (`underwater`, `flat`, `hill`, `mountain`) so combinations like plains hills are possible without terrain-id explosion.
 - Terrain cover (for example forest, jungle, bamboo, reeds) must be modeled as a terrain-feature layer separate from economic resources so both can coexist on a tile.
+- Terrain-feature rendering should use a renderer-only definition registry keyed by `TerrainFeatureType` for model paths, calibrated asset scale, and deterministic anchor layouts; keep that visual metadata out of the gameplay/domain `terrainFeatures` catalog.
 - Map renderer layer toggles must keep hover/picking targets in a non-visual interaction layer so disabling visible fills never breaks raycast behavior.
 - Give renderer layer groups and per-tile render objects deterministic shared names so Three.js scene inspection and renderer tests can target stable structure.
 - Keep renderer and model-debug scenes `Z-up`: map tiles live on the `XY` plane and `Z` is height/elevation.

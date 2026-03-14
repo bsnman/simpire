@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { MapLayer } from '~/game/render/layers/MapLayer';
 import {
+  TerrainFeatureLayer,
+  type TerrainFeatureDecorationFactoryLike,
+} from '~/game/render/layers/TerrainFeatureLayer';
+import {
   TileElevationLayer,
   type TerrainDecorationFactoryLike,
 } from '~/game/render/layers/TileElevationLayer';
@@ -10,6 +14,7 @@ import {
   MAP_ELEVATION_LAYER_GROUP_NAME,
   MAP_HEX_OUTLINE_LAYER_GROUP_NAME,
   MAP_INTERACTION_LAYER_GROUP_NAME,
+  MAP_TERRAIN_FEATURE_LAYER_GROUP_NAME,
   MAP_TILE_COLOR_LAYER_GROUP_NAME,
 } from '~/game/render/layers/mapLayerObjectNames';
 import {
@@ -51,6 +56,32 @@ class FakeTerrainDecorationFactory implements TerrainDecorationFactoryLike {
   public readonly destroy = vi.fn();
 }
 
+class FakeTerrainFeatureDecorationFactory implements TerrainFeatureDecorationFactoryLike {
+  public readonly populateTerrainFeatureDecorations = vi.fn(
+    async ({
+      targetGroup,
+      tileRenderData,
+      isStale,
+    }: Parameters<TerrainFeatureDecorationFactoryLike['populateTerrainFeatureDecorations']>[0]) => {
+      if (isStale()) {
+        return;
+      }
+
+      const hasTerrainFeatures = tileRenderData.some((tileData) => tileData.tile?.terrainFeatureId);
+
+      if (!hasTerrainFeatures) {
+        return;
+      }
+
+      const decoration = new Group();
+      decoration.name = 'fake-terrain-feature-decoration';
+      targetGroup.add(decoration);
+    },
+  );
+
+  public readonly destroy = vi.fn();
+}
+
 const TEST_MAP: GameMap = {
   id: 'test-map',
   layout: 'pointy',
@@ -63,6 +94,7 @@ const TEST_MAP: GameMap = {
       r: 0,
       terrain: 'grassland',
       elevation: 'hill',
+      terrainFeatureId: 'forest',
     },
   },
 };
@@ -76,6 +108,7 @@ const FLAT_TEST_MAP: GameMap = {
       r: 0,
       terrain: 'grassland',
       elevation: 'flat',
+      terrainFeatureId: 'forest',
     },
   },
 };
@@ -96,6 +129,7 @@ const expectLayerCounts = (
     tileColor: number;
     hexOutline: number;
     elevation: number;
+    terrainFeature: number;
     interaction: number;
   },
 ) => {
@@ -107,6 +141,9 @@ const expectLayerCounts = (
   );
   expect(getLayerGroup(mapLayer, MAP_ELEVATION_LAYER_GROUP_NAME).children).toHaveLength(
     counts.elevation,
+  );
+  expect(getLayerGroup(mapLayer, MAP_TERRAIN_FEATURE_LAYER_GROUP_NAME).children).toHaveLength(
+    counts.terrainFeature,
   );
   expect(getLayerGroup(mapLayer, MAP_INTERACTION_LAYER_GROUP_NAME).children).toHaveLength(
     counts.interaction,
@@ -125,13 +162,16 @@ const createTestCamera = (): OrthographicCamera => {
 
 const createMapLayer = () => {
   const terrainDecorationFactory = new FakeTerrainDecorationFactory();
+  const terrainFeatureDecorationFactory = new FakeTerrainFeatureDecorationFactory();
   const mapLayer = new MapLayer({
     tileElevationLayer: new TileElevationLayer(terrainDecorationFactory),
+    terrainFeatureLayer: new TerrainFeatureLayer(terrainFeatureDecorationFactory),
   });
 
   return {
     mapLayer,
     terrainDecorationFactory,
+    terrainFeatureDecorationFactory,
   };
 };
 
@@ -145,18 +185,20 @@ describe('MapLayer', () => {
       tileColor: 1,
       hexOutline: 1,
       elevation: 1,
+      terrainFeature: 1,
       interaction: 1,
     });
   });
 
   it('disables each visual layer independently without removing other layers', () => {
-    const { mapLayer, terrainDecorationFactory } = createMapLayer();
+    const { mapLayer, terrainDecorationFactory, terrainFeatureDecorationFactory } = createMapLayer();
 
     mapLayer.render(TEST_MAP, DEFAULT_MAP_RENDER_CONFIG);
     expectLayerCounts(mapLayer, {
       tileColor: 1,
       hexOutline: 1,
       elevation: 1,
+      terrainFeature: 1,
       interaction: 1,
     });
 
@@ -172,6 +214,7 @@ describe('MapLayer', () => {
       tileColor: 0,
       hexOutline: 1,
       elevation: 1,
+      terrainFeature: 1,
       interaction: 1,
     });
 
@@ -187,6 +230,7 @@ describe('MapLayer', () => {
       tileColor: 1,
       hexOutline: 0,
       elevation: 1,
+      terrainFeature: 1,
       interaction: 1,
     });
 
@@ -202,10 +246,30 @@ describe('MapLayer', () => {
       tileColor: 1,
       hexOutline: 1,
       elevation: 0,
+      terrainFeature: 1,
       interaction: 1,
     });
 
-    expect(terrainDecorationFactory.populateTerrainDecorations).toHaveBeenCalledTimes(3);
+    mapLayer.render(
+      TEST_MAP,
+      normalizeMapRenderConfig({
+        terrainFeature: {
+          enabled: false,
+        },
+      }),
+    );
+    expectLayerCounts(mapLayer, {
+      tileColor: 1,
+      hexOutline: 1,
+      elevation: 1,
+      terrainFeature: 0,
+      interaction: 1,
+    });
+
+    expect(terrainDecorationFactory.populateTerrainDecorations).toHaveBeenCalledTimes(4);
+    expect(terrainFeatureDecorationFactory.populateTerrainFeatureDecorations).toHaveBeenCalledTimes(
+      4,
+    );
   });
 
   it('keeps hover picking working when tile color is disabled', () => {
@@ -239,11 +303,12 @@ describe('MapLayer', () => {
     expect(getLayerGroup(mapLayer, MAP_TILE_COLOR_LAYER_GROUP_NAME).children).toHaveLength(0);
     expect(getLayerGroup(mapLayer, MAP_HEX_OUTLINE_LAYER_GROUP_NAME).children).toHaveLength(1);
     expect(getLayerGroup(mapLayer, MAP_ELEVATION_LAYER_GROUP_NAME).children).toHaveLength(1);
+    expect(getLayerGroup(mapLayer, MAP_TERRAIN_FEATURE_LAYER_GROUP_NAME).children).toHaveLength(1);
     expect(getLayerGroup(mapLayer, MAP_INTERACTION_LAYER_GROUP_NAME).children).toHaveLength(1);
     expect(hoveredTileKey).toBe('0,0');
   });
 
-  it('keeps hover picking working with elevation decorations and hex outlines enabled', () => {
+  it('keeps hover picking working with elevation and terrain feature decorations enabled', () => {
     const { mapLayer } = createMapLayer();
     const camera = createTestCamera();
     const raycaster = new Raycaster();
@@ -268,6 +333,7 @@ describe('MapLayer', () => {
       tileColor: 1,
       hexOutline: 1,
       elevation: 1,
+      terrainFeature: 1,
       interaction: 1,
     });
     expect(hoveredTileKey).toBe('0,0');
@@ -293,6 +359,9 @@ describe('MapLayer', () => {
       elevation: {
         enabled: false,
       },
+      terrainFeature: {
+        enabled: false,
+      },
     });
 
     mapLayer.render(TEST_MAP, hiddenVisualConfig);
@@ -310,6 +379,7 @@ describe('MapLayer', () => {
       tileColor: 0,
       hexOutline: 0,
       elevation: 0,
+      terrainFeature: 0,
       interaction: 1,
     });
     expect(hoveredTileKey).toBe('0,0');
