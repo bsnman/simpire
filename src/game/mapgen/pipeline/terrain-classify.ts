@@ -85,8 +85,8 @@ const classifyLandElevation = (
 ): ElevationType => {
   const inlandBoost = Math.min(4, Math.max(0, distanceToWater)) * 0.01;
   const normalized = clamp(elevation + inlandBoost + (detailNoise - 0.5) * 0.05, 0, 1);
-  const mountainThreshold = 0.82 - mountainIntensity * 0.2;
-  const hillThreshold = mountainThreshold - 0.1;
+  const mountainThreshold = 0.82 - mountainIntensity * 0.22;
+  const hillThreshold = mountainThreshold - 0.13;
 
   if (normalized >= mountainThreshold) {
     return 'mountain';
