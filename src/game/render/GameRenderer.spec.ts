@@ -287,19 +287,11 @@ describe('GameRenderer', () => {
 
     await renderer.init(canvas);
 
-    const before = intersectMapPlaneAtScreenPoint(
-      sceneSetup.camera,
-      anchorScreenX,
-      anchorScreenY,
-    );
+    const before = intersectMapPlaneAtScreenPoint(sceneSetup.camera, anchorScreenX, anchorScreenY);
 
     renderer.zoomByWheel(-1, anchorScreenX, anchorScreenY);
 
-    const after = intersectMapPlaneAtScreenPoint(
-      sceneSetup.camera,
-      anchorScreenX,
-      anchorScreenY,
-    );
+    const after = intersectMapPlaneAtScreenPoint(sceneSetup.camera, anchorScreenX, anchorScreenY);
 
     expect(after.x).toBeCloseTo(before.x, 6);
     expect(after.y).toBeCloseTo(before.y, 6);

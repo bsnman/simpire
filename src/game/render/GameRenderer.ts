@@ -238,9 +238,7 @@ export class GameRenderer {
       hasZoomAnchor &&
       this.intersectScreenPointWithMapPlane(screenX, screenY, this.mapPlaneZoomAnchorAfter)
     ) {
-      this.cameraFocusDelta
-        .copy(this.mapPlaneZoomAnchorBefore)
-        .sub(this.mapPlaneZoomAnchorAfter);
+      this.cameraFocusDelta.copy(this.mapPlaneZoomAnchorBefore).sub(this.mapPlaneZoomAnchorAfter);
       this.cameraFocusWorld.add(this.cameraFocusDelta);
       this.updateCameraTransform();
     }
@@ -437,10 +435,7 @@ export class GameRenderer {
     let cameraDistance = GameRenderer.MIN_CAMERA_DISTANCE;
     let depthRange = this.getMapDepthRange(camera, cameraDistance);
 
-    if (
-      depthRange.hasBounds &&
-      depthRange.minDistance < GameRenderer.CAMERA_DEPTH_MARGIN
-    ) {
+    if (depthRange.hasBounds && depthRange.minDistance < GameRenderer.CAMERA_DEPTH_MARGIN) {
       cameraDistance += GameRenderer.CAMERA_DEPTH_MARGIN - depthRange.minDistance;
       depthRange = this.getMapDepthRange(camera, cameraDistance);
     }
@@ -473,10 +468,7 @@ export class GameRenderer {
     this.cameraFocusInitialized = true;
   }
 
-  private getMapDepthRange(
-    camera: OrthographicCamera,
-    cameraDistance: number,
-  ): DepthRange {
+  private getMapDepthRange(camera: OrthographicCamera, cameraDistance: number): DepthRange {
     this.applyCameraPose(camera, cameraDistance);
     this.mapLayer.group.updateMatrixWorld(true);
     this.mapDepthBounds.setFromObject(this.mapLayer.group);

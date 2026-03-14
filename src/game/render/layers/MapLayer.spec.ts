@@ -34,9 +34,7 @@ class FakeTerrainDecorationFactory implements TerrainDecorationFactoryLike {
       const hasElevationDecoration = map.tileKeys.some((key) => {
         const tile = map.tilesByKey[key];
         return (
-          tile?.elevation === 'flat' ||
-          tile?.elevation === 'hill' ||
-          tile?.elevation === 'mountain'
+          tile?.elevation === 'flat' || tile?.elevation === 'hill' || tile?.elevation === 'mountain'
         );
       });
 
