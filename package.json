@@ -14,6 +14,7 @@
     "terrain:models": "node scripts/generate-terrain-glb.mjs",
     "terrain:hill-v2": "node scripts/generate-hill-v2-glb.mjs",
     "terrain:hill-variants": "node scripts/generate-hill-variant-glb.mjs",
+    "terrain:hill-v4": "node scripts/generate-hill-v4-glb.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

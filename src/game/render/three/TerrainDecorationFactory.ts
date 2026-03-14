@@ -32,8 +32,8 @@ type PopulateTerrainDecorationsOptions = {
 // };
 
 const TERRAIN_MODEL_PATHS: Partial<Record<ElevationType, string>> = {
-  hill: '/models/terrain/hill-v2.3.glb',
-  mountain: '/models/terrain/mountain.glb',
+  hill: '/models/terrain/hill-v4.2.glb',
+  mountain: '/models/terrain/hill-v4.6.glb',
 };
 
 const hashHexKey = (key: HexKey): number => {
@@ -50,7 +50,6 @@ const hashHexKey = (key: HexKey): number => {
 const toUnitRandom = (seed: number): number => seed / 0xffffffff;
 
 const cloneModelTemplate = (template: Object3D): Object3D => template.clone(true);
-const MOUNTAIN_ROCK_TINT = '#7b7f85';
 
 type ResourceDisposalTracker = {
   geometries: Set<BufferGeometry>;
@@ -110,10 +109,6 @@ const disposeObject3DResources = (object: Object3D, disposalTracker: ResourceDis
 };
 
 const buildTerrainTint = (tile: MapTile): Color => {
-  if (tile.elevation === 'mountain') {
-    return new Color(MOUNTAIN_ROCK_TINT);
-  }
-
   const tint = new Color(tiles[tile.terrain].color);
   return tint.offsetHSL(0, -0.08, -0.08);
 };
@@ -307,7 +302,7 @@ export class TerrainDecorationFactory {
     tint: Color,
     elevation: ElevationType,
   ): Material {
-    const side = elevation === 'hill' ? DoubleSide : baseMaterial.side;
+    const side = elevation === 'hill' || elevation === 'mountain' ? DoubleSide : baseMaterial.side;
     const tintKey = `${tint.getHexString()}:${side}`;
     const tintedMaterialsByColor = this.tintedMaterialCache.get(baseMaterial);
 

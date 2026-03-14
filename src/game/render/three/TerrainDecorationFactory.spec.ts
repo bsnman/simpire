@@ -1,6 +1,7 @@
-import { BufferGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial, Texture } from 'three';
+import { BufferGeometry, Color, DoubleSide, Group, Mesh, MeshBasicMaterial, Texture } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 
+import { tiles } from '~/base/tiles';
 import { buildMapElevationObjectName } from '~/game/render/layers/mapLayerObjectNames';
 import { GLTF_IMPORT_CORRECTION_ROTATION_X } from '~/game/render/three/modelOrientation';
 import {
@@ -10,7 +11,10 @@ import {
 import { toHexKey } from '~/types/hex';
 import type { GameMap } from '~/types/map';
 
-const TEST_MAP: GameMap = {
+const HILL_MODEL_PATH = '/models/terrain/hill-v4.3.glb';
+const MOUNTAIN_MODEL_PATH = '/models/terrain/hill-v4.6.glb';
+
+const createTestMap = (elevation: 'hill' | 'mountain'): GameMap => ({
   id: 'terrain-decoration-test-map',
   layout: 'pointy',
   tileSize: 50,
@@ -21,10 +25,10 @@ const TEST_MAP: GameMap = {
       q: 0,
       r: 0,
       terrain: 'grassland',
-      elevation: 'hill',
+      elevation,
     },
   },
-};
+});
 
 type TemplateSceneResources = {
   geometry: BufferGeometry;
@@ -59,6 +63,7 @@ const createLoaderResponse = (scene: Group) =>
 
 describe('TerrainDecorationFactory', () => {
   it('uses deterministic scene object names and disposes loaded template resources on destroy', async () => {
+    const testMap = createTestMap('hill');
     const hillResources = createTemplateSceneResources();
     const mountainResources = createTemplateSceneResources();
     const hillGeometryDispose = vi.spyOn(hillResources.geometry, 'dispose');
@@ -69,18 +74,22 @@ describe('TerrainDecorationFactory', () => {
     const mountainTextureDispose = vi.spyOn(mountainResources.texture, 'dispose');
     const loader: TerrainModelLoaderLike = {
       loadAsync: vi.fn(async (path: string) => {
-        if (path.includes('hill')) {
+        if (path === HILL_MODEL_PATH) {
           return createLoaderResponse(hillResources.scene);
         }
 
-        return createLoaderResponse(mountainResources.scene);
+        if (path === MOUNTAIN_MODEL_PATH) {
+          return createLoaderResponse(mountainResources.scene);
+        }
+
+        throw new Error(`Unexpected terrain model path: ${path}`);
       }),
     };
     const factory = new TerrainDecorationFactory(loader);
     const targetGroup = new Group();
 
     await factory.populateTerrainDecorations({
-      map: TEST_MAP,
+      map: testMap,
       targetGroup,
       zOffset: 1,
       scaleMultiplier: 0.75,
@@ -98,7 +107,9 @@ describe('TerrainDecorationFactory', () => {
     expect(targetGroup.children[0]?.children[0]?.rotation.x).toBeCloseTo(
       GLTF_IMPORT_CORRECTION_ROTATION_X,
     );
-    const hillMesh = targetGroup.children[0]?.getObjectByProperty('isMesh', true) as Mesh | undefined;
+    const hillMesh = targetGroup.children[0]?.getObjectByProperty('isMesh', true) as
+      | Mesh
+      | undefined;
     expect(Array.isArray(hillMesh?.material)).toBe(false);
     expect((hillMesh?.material as MeshBasicMaterial | undefined)?.side).toBe(DoubleSide);
 
@@ -112,7 +123,49 @@ describe('TerrainDecorationFactory', () => {
     expect(mountainTextureDispose).toHaveBeenCalledOnce();
   });
 
+  it('uses double-sided terrain-tinted materials for mountains', async () => {
+    const testMap = createTestMap('mountain');
+    const hillResources = createTemplateSceneResources();
+    const mountainResources = createTemplateSceneResources();
+    const loader: TerrainModelLoaderLike = {
+      loadAsync: vi.fn(async (path: string) => {
+        if (path === HILL_MODEL_PATH) {
+          return createLoaderResponse(hillResources.scene);
+        }
+
+        if (path === MOUNTAIN_MODEL_PATH) {
+          return createLoaderResponse(mountainResources.scene);
+        }
+
+        throw new Error(`Unexpected terrain model path: ${path}`);
+      }),
+    };
+    const factory = new TerrainDecorationFactory(loader);
+    const targetGroup = new Group();
+    const expectedMountainTint = new Color(tiles.grassland.color)
+      .offsetHSL(0, -0.08, -0.08)
+      .getHexString();
+
+    await factory.populateTerrainDecorations({
+      map: testMap,
+      targetGroup,
+      zOffset: 1,
+      scaleMultiplier: 0.75,
+      isStale: () => false,
+    });
+
+    const mountainMesh = targetGroup.children[0]?.getObjectByProperty('isMesh', true) as
+      | Mesh
+      | undefined;
+    const mountainMaterial = mountainMesh?.material as MeshBasicMaterial | undefined;
+
+    expect(Array.isArray(mountainMesh?.material)).toBe(false);
+    expect(mountainMaterial?.side).toBe(DoubleSide);
+    expect(mountainMaterial?.color.getHexString()).toBe(expectedMountainTint);
+  });
+
   it('disposes late-loaded templates instead of retaining them after destroy', async () => {
+    const testMap = createTestMap('hill');
     const hillResources = createTemplateSceneResources();
     const mountainResources = createTemplateSceneResources();
     const hillGeometryDispose = vi.spyOn(hillResources.geometry, 'dispose');
@@ -134,7 +187,7 @@ describe('TerrainDecorationFactory', () => {
     const factory = new TerrainDecorationFactory(loader);
     const targetGroup = new Group();
     const populatePromise = factory.populateTerrainDecorations({
-      map: TEST_MAP,
+      map: testMap,
       targetGroup,
       zOffset: 1,
       scaleMultiplier: 0.75,
@@ -142,10 +195,8 @@ describe('TerrainDecorationFactory', () => {
     });
 
     factory.destroy();
-    pendingLoads.get('/models/terrain/hill-v2.3.glb')?.(createLoaderResponse(hillResources.scene));
-    pendingLoads.get('/models/terrain/mountain.glb')?.(
-      createLoaderResponse(mountainResources.scene),
-    );
+    pendingLoads.get(HILL_MODEL_PATH)?.(createLoaderResponse(hillResources.scene));
+    pendingLoads.get(MOUNTAIN_MODEL_PATH)?.(createLoaderResponse(mountainResources.scene));
     await populatePromise;
 
     expect(targetGroup.children).toHaveLength(0);
