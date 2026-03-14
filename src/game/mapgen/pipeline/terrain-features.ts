@@ -24,8 +24,8 @@ const TERRAIN_FEATURE_TYPES: readonly TerrainFeatureType[] = [
 const WATER_TERRAINS = new Set<TileType>(['coastal_sea', 'deep_sea', 'ocean']);
 
 const BASE_DENSITY_BY_TERRAIN: Partial<Record<TileType, number>> = {
-  grassland: 0.42,
-  plains: 0.3,
+  grassland: 0.8,
+  plains: 0.5,
   coastal_sea: 0.2,
 };
 
@@ -176,7 +176,11 @@ export const assignTerrainFeatures = (
 
     const densityNoise = sampleTerrainFeatureField(tile, config.noiseAt, 'terrain-feature-density');
     const threshold = clamp(baseDensity + (densityNoise - 0.5) * 0.14, 0, 1);
-    const presenceNoise = sampleTerrainFeatureField(tile, config.noiseAt, 'terrain-feature-presence');
+    const presenceNoise = sampleTerrainFeatureField(
+      tile,
+      config.noiseAt,
+      'terrain-feature-presence',
+    );
 
     if (presenceNoise > threshold) {
       if (!tile.terrainFeatureId) {
