@@ -32,8 +32,8 @@ type PopulateTerrainDecorationsOptions = {
 // };
 
 const TERRAIN_MODEL_PATHS: Partial<Record<ElevationType, string>> = {
-  hill: '/models/terrain/hill-v4.2.glb',
-  mountain: '/models/terrain/hill-v4.6.glb',
+  hill: '/models/terrain/hill-v5.glb',
+  mountain: '/models/terrain/mountain-v5.glb',
 };
 
 const hashHexKey = (key: HexKey): number => {
