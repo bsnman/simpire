@@ -10,6 +10,7 @@ import {
   createSubseedStreams,
   noiseAtFromSubseed,
 } from '~/game/mapgen/pipeline/subseeds';
+import { sampleIsotropicField } from '~/game/mapgen/pipeline/isotropic-noise';
 
 const collectNeighborSymmetryViolations = (grid: MapGrid): number => {
   let violations = 0;
@@ -68,6 +69,18 @@ describe('mapgen deterministic foundations', () => {
     const randomB = createSeededRandom('shuffle-seed');
 
     expect(buildDeterministicShuffle(25, randomA)).toEqual(buildDeterministicShuffle(25, randomB));
+  });
+
+  it('samples isotropic fields deterministically without collapsing to direct axial hashes', () => {
+    const noiseAt = (q: number, r: number, salt?: string) => noiseAtFromSubseed('seed-gamma', 'climate', q, r, salt);
+    const isotropic = sampleIsotropicField(7, 11, noiseAt, 'field-a');
+    const isotropicRepeat = sampleIsotropicField(7, 11, noiseAt, 'field-a');
+    const direct = noiseAt(7, 11, 'field-a');
+
+    expect(isotropic).toBe(isotropicRepeat);
+    expect(isotropic).not.toBe(direct);
+    expect(isotropic).toBeGreaterThanOrEqual(0);
+    expect(isotropic).toBeLessThanOrEqual(1);
   });
 
   it('builds a symmetric hex-neighbor graph', () => {

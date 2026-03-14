@@ -4,6 +4,7 @@ import { clamp } from '~/game/mapgen/helpers';
 import type { MapTile } from '~/types/map';
 
 import type { MapGrid } from '~/game/mapgen/pipeline/grid';
+import { sampleIsotropicField } from '~/game/mapgen/pipeline/isotropic-noise';
 
 export type TerrainFeatureGenerationConfig = {
   noiseAt: (q: number, r: number, salt?: string) => number;
@@ -67,14 +68,25 @@ const resolveBaseDensity = (tile: MapTile): number => {
   return clamp(terrainDensity * elevationMultiplier, 0, 1);
 };
 
+const sampleTerrainFeatureField = (
+  tile: MapTile,
+  noiseAt: TerrainFeatureGenerationConfig['noiseAt'],
+  salt: string,
+): number =>
+  sampleIsotropicField(tile.q, tile.r, noiseAt, salt, {
+    contrast: 1.12,
+    frequency: 0.28,
+    warpAmount: 0.45,
+  });
+
 const createFeatureWeights = (
   tile: MapTile,
   hasWaterNeighbor: boolean,
   noiseAt: TerrainFeatureGenerationConfig['noiseAt'],
 ): WeightedFeature[] => {
-  const heat = noiseAt(tile.q, tile.r, 'terrain-feature-heat');
-  const moisture = noiseAt(tile.q, tile.r, 'terrain-feature-moisture');
-  const fertility = noiseAt(tile.q, tile.r, 'terrain-feature-fertility');
+  const heat = sampleTerrainFeatureField(tile, noiseAt, 'terrain-feature-heat');
+  const moisture = sampleTerrainFeatureField(tile, noiseAt, 'terrain-feature-moisture');
+  const fertility = sampleTerrainFeatureField(tile, noiseAt, 'terrain-feature-fertility');
   const weights: WeightedFeature[] = [];
 
   for (const featureId of TERRAIN_FEATURE_TYPES) {
@@ -162,9 +174,9 @@ export const assignTerrainFeatures = (
       };
     }
 
-    const densityNoise = config.noiseAt(tile.q, tile.r, 'terrain-feature-density');
+    const densityNoise = sampleTerrainFeatureField(tile, config.noiseAt, 'terrain-feature-density');
     const threshold = clamp(baseDensity + (densityNoise - 0.5) * 0.14, 0, 1);
-    const presenceNoise = config.noiseAt(tile.q, tile.r, 'terrain-feature-presence');
+    const presenceNoise = sampleTerrainFeatureField(tile, config.noiseAt, 'terrain-feature-presence');
 
     if (presenceNoise > threshold) {
       if (!tile.terrainFeatureId) {
@@ -184,7 +196,7 @@ export const assignTerrainFeatures = (
     );
     const selectedFeature = pickWeightedFeature(
       weightedFeatures,
-      config.noiseAt(tile.q, tile.r, 'terrain-feature-type'),
+      sampleTerrainFeatureField(tile, config.noiseAt, 'terrain-feature-type'),
     );
 
     if (!selectedFeature) {

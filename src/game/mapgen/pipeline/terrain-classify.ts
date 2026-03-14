@@ -4,6 +4,7 @@ import { clamp } from '~/game/mapgen/helpers';
 import type { MapTile } from '~/types/map';
 
 import { isLandAt, type GridTile, type MapGrid } from '~/game/mapgen/pipeline/grid';
+import { sampleIsotropicField } from '~/game/mapgen/pipeline/isotropic-noise';
 
 export type TerrainClassificationConfig = {
   shelfWidth: number;
@@ -82,11 +83,13 @@ const classifyLandElevation = (
   distanceToWater: number,
   mountainIntensity: number,
   detailNoise: number,
+  reliefNoise: number,
 ): ElevationType => {
   const inlandBoost = Math.min(4, Math.max(0, distanceToWater)) * 0.01;
-  const normalized = clamp(elevation + inlandBoost + (detailNoise - 0.5) * 0.05, 0, 1);
-  const mountainThreshold = 0.82 - mountainIntensity * 0.22;
-  const hillThreshold = mountainThreshold - 0.13;
+  const normalized = clamp(elevation + inlandBoost + (detailNoise - 0.5) * 0.08, 0, 1);
+  const thresholdShift = (reliefNoise - 0.5) * 0.08;
+  const mountainThreshold = 0.82 - mountainIntensity * 0.23 + thresholdShift * 0.45;
+  const hillThreshold = mountainThreshold - 0.12 + thresholdShift * 0.75;
 
   if (normalized >= mountainThreshold) {
     return 'mountain';
@@ -99,19 +102,12 @@ const classifyLandElevation = (
   return 'flat';
 };
 
-const normalizeClimateBlend = (value: number): number => clamp((value - 0.5) * 1.18 + 0.5, 0, 1);
-
 const sampleClimateNoise = (
   tile: GridTile,
   noiseAt: (q: number, r: number, salt?: string) => number,
   salt: string,
 ): number => {
-  const base = noiseAt(tile.q, tile.r, `${salt}-base`);
-  const axisA = noiseAt(tile.q + tile.r, -tile.q, `${salt}-axis-a`);
-  const axisB = noiseAt(-tile.r, tile.q + tile.r, `${salt}-axis-b`);
-  const micro = noiseAt(tile.q * 2 - tile.r, tile.r * 2 + tile.q, `${salt}-micro`);
-
-  return normalizeClimateBlend(base * 0.38 + axisA * 0.24 + axisB * 0.24 + micro * 0.14);
+  return sampleIsotropicField(tile.q, tile.r, noiseAt, salt);
 };
 
 const classifyLandTerrain = (
@@ -181,7 +177,16 @@ export const classifyTerrain = (
       elevation[tileIndex] ?? 0,
       distanceToWater[tileIndex] ?? 0,
       mountainIntensity,
-      config.noiseAt(tile.q, tile.r, 'terrain-detail'),
+      sampleIsotropicField(tile.q, tile.r, config.noiseAt, 'terrain-detail', {
+        contrast: 1.12,
+        frequency: 0.34,
+        warpAmount: 0.45,
+      }),
+      sampleIsotropicField(tile.q, tile.r, config.noiseAt, 'terrain-relief', {
+        contrast: 1.08,
+        frequency: 0.42,
+        warpAmount: 0.5,
+      }),
     );
 
     return {

@@ -92,6 +92,7 @@ Important anti-artifact rule: primary-region selection is intentionally kept clo
   - Tile terrain (biome/water): `ocean`, `deep_sea`, `coastal_sea`, `grassland`, `plains`, `desert`, `tundra`
   - Elevation: `underwater`, `flat`, `hill`, `mountain`
 - Climate channels (`heat`, `moisture`, `fertility`) should be sampled with deterministic rotated/isotropic multi-sample blending instead of single-point coordinate hash lookups, to prevent straight-line biome striping artifacts.
+- Elevation detail perturbation should also use the same deterministic isotropic multi-sample field approach rather than direct axial-coordinate hash lookups, so hill/mountain transitions do not form `q`-axis diagonal bands.
 
 This separation allows combinations like plains hills or tundra mountains without encoding every combination as a terrain id.
 
@@ -100,6 +101,7 @@ This separation allows combinations like plains hills or tundra mountains withou
 - Apply a dedicated terrain-feature pass (`terrain-features.ts`) after biome/elevation classification.
 - Feature assignment is deterministic and stage-isolated via the `terrain-features` subseed stream.
 - This pass assigns `terrainFeatureId` (for example `forest`, `jungle`, `bamboo_grove`, `reeds`) without mutating macro landmass generation.
+- Terrain-feature density, presence, climate weighting, and feature-type selection should sample deterministic isotropic fields instead of raw `(q, r)` hash noise so feature cover does not align into axial stripes.
 
 ## Step 7: Quality Metrics
 

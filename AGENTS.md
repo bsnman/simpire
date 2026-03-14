@@ -36,6 +36,7 @@ Follow these project-specific instructions when working in this repo.
 - Keep terrain-feature source and promoted runtime GLBs under `public/models/terrain-features/`; when a starter asset is script-generated, keep the generator in `scripts/` and document the source-to-runtime lineage in `documentation/terrain-model-workflow.md`.
 - For macro terrain generation, avoid directional bias (for example diagonal streak artifacts) by using symmetric hex-neighbor rules, deterministic shuffled iteration where applicable, and isotropic/rotated noise sampling.
 - For terrain biome classification, avoid single-point coordinate hash sampling; use deterministic isotropic/rotated multi-sample climate noise so plains/grassland transitions do not form axis-aligned stripes.
+- For elevation detail and terrain-feature placement, avoid raw axial-coordinate hash sampling; use deterministic isotropic/rotated multi-sample fields so hills, mountains, and vegetation cover do not collapse into `q`-axis diagonal bands.
 - Keep macro-mask primary region selection close to target land ratio before final rebalance; avoid large one-pass rebalance corrections because they can introduce single-axis land streak artifacts.
 - Automated tests use Vitest (`npm test`), Vue component tests use `@vue/test-utils`, and test files should be colocated as `*.spec.ts` under `src/`.
 
