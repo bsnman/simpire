@@ -89,7 +89,7 @@ const classifyLandElevation = (
   const normalized = clamp(elevation + inlandBoost + (detailNoise - 0.5) * 0.08, 0, 1);
   const thresholdShift = (reliefNoise - 0.5) * 0.08;
   const mountainThreshold = 0.82 - mountainIntensity * 0.23 + thresholdShift * 0.45;
-  const hillThreshold = mountainThreshold - 0.12 + thresholdShift * 0.75;
+  const hillThreshold = mountainThreshold - 0.1 + thresholdShift * 0.75;
 
   if (normalized >= mountainThreshold) {
     return 'mountain';

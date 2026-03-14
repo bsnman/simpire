@@ -16,6 +16,7 @@ export type ContinentsParams = {
   tectonicStrength: number;
   coastlineRoughness: number;
   mountainIntensity: number;
+  elevationSprayDensity: number;
 };
 
 type LegacyContinentsParams = {
@@ -35,6 +36,7 @@ const DEFAULT_PARAMS: ContinentsParams = {
   tectonicStrength: 0.62,
   coastlineRoughness: 0.58,
   mountainIntensity: 0.58,
+  elevationSprayDensity: 0,
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -213,6 +215,16 @@ const validateContinentsParams = (params: unknown): ValidationResult<ContinentsP
     };
   }
 
+  const elevationSprayDensity =
+    readFiniteNumber(params, 'elevationSprayDensity') ?? DEFAULT_PARAMS.elevationSprayDensity;
+
+  if (elevationSprayDensity < 0 || elevationSprayDensity > 1) {
+    return {
+      ok: false,
+      error: 'elevationSprayDensity must be in the range 0..1.',
+    };
+  }
+
   return {
     ok: true,
     value: {
@@ -223,6 +235,7 @@ const validateContinentsParams = (params: unknown): ValidationResult<ContinentsP
       tectonicStrength,
       coastlineRoughness,
       mountainIntensity,
+      elevationSprayDensity,
     },
   };
 };
@@ -258,6 +271,7 @@ const buildContinentsPipelineConfig = (context: MapGeneratorContext, params: Con
     tectonicStrength: params.tectonicStrength,
     coastlineRoughness: params.coastlineRoughness,
     mountainIntensity: params.mountainIntensity,
+    elevationSprayDensity: params.elevationSprayDensity,
     shelfWidth: 2,
   };
 };
@@ -338,6 +352,15 @@ export const continentsMapGenerator: MapGeneratorDefinition<ContinentsParams> = 
       label: 'Mountain Intensity',
       description: 'Adjusts mountain/hill prevalence in elevated regions.',
       defaultValue: DEFAULT_PARAMS.mountainIntensity,
+      min: 0,
+      max: 1,
+      step: 0.01,
+    },
+    {
+      key: 'elevationSprayDensity',
+      label: 'Elevation Spray',
+      description: 'Adds sparse post-generation hills and occasional mountains across land tiles.',
+      defaultValue: DEFAULT_PARAMS.elevationSprayDensity,
       min: 0,
       max: 1,
       step: 0.01,

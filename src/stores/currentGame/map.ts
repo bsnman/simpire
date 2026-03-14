@@ -27,6 +27,7 @@ const DEFAULT_MAP_REQUEST: MapGenerationRequest = {
     tectonicStrength: 0.62,
     coastlineRoughness: 0.58,
     mountainIntensity: 0.58,
+    elevationSprayDensity: 0,
   } satisfies ContinentsParams,
   mapId: 'debug-map-001',
   layout: 'pointy',

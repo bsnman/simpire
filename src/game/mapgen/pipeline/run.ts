@@ -2,6 +2,7 @@
 import type { MapGeneratorContext } from '~/game/mapgen/contracts';
 import { classifyTerrain } from '~/game/mapgen/pipeline/terrain-classify';
 import { applyDetailPass } from '~/game/mapgen/pipeline/detail-noise';
+import { applyElevationSpray } from '~/game/mapgen/pipeline/elevation-spray';
 import { createMapGrid } from '~/game/mapgen/pipeline/grid';
 import { buildMacroMask } from '~/game/mapgen/pipeline/macro-mask';
 import { calculateMapQualityMetrics, type MapQualityMetrics } from '~/game/mapgen/pipeline/metrics';
@@ -28,6 +29,7 @@ export type GeneratorPipelineConfig = {
   tectonicStrength: number;
   coastlineRoughness: number;
   mountainIntensity: number;
+  elevationSprayDensity: number;
   shelfWidth: number;
 };
 
@@ -162,7 +164,11 @@ export const runGeneratorPipeline = (
     mountainIntensity: config.mountainIntensity,
     noiseAt: (q, r, salt) => subseeds.noiseAt('climate', q, r, salt),
   });
-  const tiles = assignTerrainFeatures(grid, terrain.tiles, {
+  const sprayedTiles = applyElevationSpray(grid, terrain.tiles, {
+    density: config.elevationSprayDensity,
+    random: subseeds.random('elevation-spray'),
+  });
+  const tiles = assignTerrainFeatures(grid, sprayedTiles, {
     noiseAt: (q, r, salt) => subseeds.noiseAt('terrain-features', q, r, salt),
   });
 

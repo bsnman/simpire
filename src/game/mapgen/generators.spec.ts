@@ -96,6 +96,7 @@ describe('map generators', () => {
         tectonicStrength: 0.64,
         coastlineRoughness: 0.59,
         mountainIntensity: 0.57,
+        elevationSprayDensity: 0.4,
       },
     };
 
@@ -135,6 +136,49 @@ describe('map generators', () => {
     });
 
     expect(terrainDifferenceRatio(first, second)).toBeGreaterThan(0.08);
+  });
+
+  it('increases rugged terrain share when elevation spray density increases', () => {
+    const baseRequest = {
+      algorithmId: CONTINENTS_GENERATOR_ID,
+      width: WIDTH,
+      height: HEIGHT,
+      seedHash: 'spray-ruggedness-seed',
+      params: {
+        landRatio: 0.33,
+        continentCountTarget: 3,
+        tectonicStrength: 0.62,
+        coastlineRoughness: 0.57,
+        mountainIntensity: 0.58,
+      },
+    };
+    const baseMap = generateMap(baseRequest);
+    const sprayedMap = generateMap({
+      ...baseRequest,
+      params: {
+        ...baseRequest.params,
+        elevationSprayDensity: 1,
+      },
+    });
+    const baseElevations = countElevations(baseMap);
+    const sprayedElevations = countElevations(sprayedMap);
+    const baseLand =
+      (baseElevations.get('flat') ?? 0) +
+      (baseElevations.get('hill') ?? 0) +
+      (baseElevations.get('mountain') ?? 0);
+    const sprayedLand =
+      (sprayedElevations.get('flat') ?? 0) +
+      (sprayedElevations.get('hill') ?? 0) +
+      (sprayedElevations.get('mountain') ?? 0);
+    const baseRuggedShare =
+      ((baseElevations.get('hill') ?? 0) + (baseElevations.get('mountain') ?? 0)) /
+      Math.max(1, baseLand);
+    const sprayedRuggedShare =
+      ((sprayedElevations.get('hill') ?? 0) + (sprayedElevations.get('mountain') ?? 0)) /
+      Math.max(1, sprayedLand);
+
+    expect(sprayedRuggedShare).toBeGreaterThan(baseRuggedShare);
+    expect(sprayedElevations.get('underwater')).toBe(baseElevations.get('underwater'));
   });
 
   it('keeps land ratio close to requested targets for both scripts', () => {
@@ -402,5 +446,11 @@ describe('map generators', () => {
     expect(archipelago?.parameterDefinitions?.some((entry) => entry.key === 'landmassSize')).toBe(
       true,
     );
+    expect(
+      continents?.parameterDefinitions?.some((entry) => entry.key === 'elevationSprayDensity'),
+    ).toBe(true);
+    expect(
+      archipelago?.parameterDefinitions?.some((entry) => entry.key === 'elevationSprayDensity'),
+    ).toBe(true);
   });
 });

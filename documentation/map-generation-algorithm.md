@@ -98,12 +98,18 @@ This separation allows combinations like plains hills or tundra mountains withou
 
 ## Step 6: Terrain Feature Placement
 
+- Apply an optional post-generation elevation spray pass after terrain classification and before terrain features.
+- This pass uses a deterministic subseed stream to add sparse single-tile hill/mountain upgrades on land only.
+- Water tiles remain `underwater`; the spray stage must never create ocean hills or mountains.
+
+## Step 7: Terrain Feature Placement
+
 - Apply a dedicated terrain-feature pass (`terrain-features.ts`) after biome/elevation classification.
 - Feature assignment is deterministic and stage-isolated via the `terrain-features` subseed stream.
 - This pass assigns `terrainFeatureId` (for example `forest`, `jungle`, `bamboo_grove`, `reeds`) without mutating macro landmass generation.
 - Terrain-feature density, presence, climate weighting, and feature-type selection should sample deterministic isotropic fields instead of raw `(q, r)` hash noise so feature cover does not align into axial stripes.
 
-## Step 7: Quality Metrics
+## Step 8: Quality Metrics
 
 - Compute map quality stats (`metrics.ts`):
   - land ratio
@@ -190,6 +196,7 @@ All tests run with Vitest (`npm test`).
   - `src/game/mapgen/pipeline/tectonics.ts`
   - `src/game/mapgen/pipeline/detail-noise.ts`
   - `src/game/mapgen/pipeline/terrain-classify.ts`
+  - `src/game/mapgen/pipeline/elevation-spray.ts`
   - `src/game/mapgen/pipeline/terrain-features.ts`
   - `src/game/mapgen/pipeline/metrics.ts`
 - Diagnostics and repro:

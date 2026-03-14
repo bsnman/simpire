@@ -1,6 +1,7 @@
 ﻿import { createRectCoords } from '~/game/mapgen/helpers';
 import { createSeededRandom } from '~/game/mapgen/random';
 import { applyDetailPass } from '~/game/mapgen/pipeline/detail-noise';
+import { applyElevationSpray } from '~/game/mapgen/pipeline/elevation-spray';
 import { createMapGrid } from '~/game/mapgen/pipeline/grid';
 import { buildMacroMask } from '~/game/mapgen/pipeline/macro-mask';
 import { generatePoissonSeeds } from '~/game/mapgen/pipeline/poisson';
@@ -199,11 +200,15 @@ describe('mapgen pipeline stages', () => {
       mountainIntensity: 0.58,
       noiseAt: createNoiseAt('feature-terrain-noise'),
     });
+    const sprayed = applyElevationSpray(grid, classified.tiles, {
+      density: 0.9,
+      random: createSeededRandom('feature-spray-noise'),
+    });
 
-    const first = assignTerrainFeatures(grid, classified.tiles, {
+    const first = assignTerrainFeatures(grid, sprayed, {
       noiseAt: createNoiseAt('feature-pass-noise'),
     });
-    const second = assignTerrainFeatures(grid, classified.tiles, {
+    const second = assignTerrainFeatures(grid, sprayed, {
       noiseAt: createNoiseAt('feature-pass-noise'),
     });
 
@@ -213,7 +218,7 @@ describe('mapgen pipeline stages', () => {
     let assignedFeatureCount = 0;
 
     for (let index = 0; index < first.length; index += 1) {
-      const baseTile = classified.tiles[index];
+      const baseTile = sprayed[index];
       const tile = first[index];
 
       expect(tile?.terrain).toBe(baseTile?.terrain);

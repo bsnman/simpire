@@ -16,6 +16,7 @@ export type ArchipelagoParams = {
   chainTendency: number;
   shelfWidth: number;
   tectonicStrength: number;
+  elevationSprayDensity: number;
 };
 
 type LegacyArchipelagoParams = {
@@ -35,6 +36,7 @@ const DEFAULT_PARAMS: ArchipelagoParams = {
   chainTendency: 0.64,
   shelfWidth: 2,
   tectonicStrength: 0.52,
+  elevationSprayDensity: 0,
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -238,6 +240,16 @@ const validateArchipelagoParams = (params: unknown): ValidationResult<Archipelag
     };
   }
 
+  const elevationSprayDensity =
+    readFiniteNumber(params, 'elevationSprayDensity') ?? DEFAULT_PARAMS.elevationSprayDensity;
+
+  if (elevationSprayDensity < 0 || elevationSprayDensity > 1) {
+    return {
+      ok: false,
+      error: 'elevationSprayDensity must be in the range 0..1.',
+    };
+  }
+
   return {
     ok: true,
     value: {
@@ -248,6 +260,7 @@ const validateArchipelagoParams = (params: unknown): ValidationResult<Archipelag
       chainTendency,
       shelfWidth,
       tectonicStrength,
+      elevationSprayDensity,
     },
   };
 };
@@ -282,6 +295,7 @@ const buildArchipelagoPipelineConfig = (
     tectonicStrength: params.tectonicStrength,
     coastlineRoughness: 0.74,
     mountainIntensity: clamp(0.42 + params.tectonicStrength * 0.25, 0, 1),
+    elevationSprayDensity: params.elevationSprayDensity,
     shelfWidth: params.shelfWidth,
   };
 };
@@ -363,6 +377,15 @@ export const archipelagoMapGenerator: MapGeneratorDefinition<ArchipelagoParams> 
       label: 'Tectonic Strength',
       description: 'Controls boundary-driven uplift and ridge prominence.',
       defaultValue: DEFAULT_PARAMS.tectonicStrength,
+      min: 0,
+      max: 1,
+      step: 0.01,
+    },
+    {
+      key: 'elevationSprayDensity',
+      label: 'Elevation Spray',
+      description: 'Adds sparse post-generation hills and occasional mountains across land tiles.',
+      defaultValue: DEFAULT_PARAMS.elevationSprayDensity,
       min: 0,
       max: 1,
       step: 0.01,
