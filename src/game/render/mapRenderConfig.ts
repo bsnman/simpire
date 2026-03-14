@@ -41,8 +41,8 @@ export const DEFAULT_MAP_RENDER_CONFIG: MapRenderConfig = {
   },
   elevation: {
     enabled: true,
-    zOffset: 1,
-    scaleMultiplier: 0.75,
+    zOffset: 0.05,
+    scaleMultiplier: 1.1,
   },
 };
 

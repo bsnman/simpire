@@ -283,22 +283,16 @@ export class TerrainDecorationFactory {
       }
 
       if (Array.isArray(mesh.material)) {
-        mesh.material = mesh.material.map((material) =>
-          this.getTintedMaterial(material, tint, elevation),
-        );
+        mesh.material = mesh.material.map((material) => this.getTintedMaterial(material, tint));
         return;
       }
 
-      mesh.material = this.getTintedMaterial(mesh.material, tint, elevation);
+      mesh.material = this.getTintedMaterial(mesh.material, tint);
     });
   }
 
-  private getTintedMaterial(
-    baseMaterial: Material,
-    tint: Color,
-    elevation: ElevationType,
-  ): Material {
-    const side = elevation === 'hill' || elevation === 'mountain' ? DoubleSide : baseMaterial.side;
+  private getTintedMaterial(baseMaterial: Material, tint: Color): Material {
+    const side = DoubleSide;
     const tintKey = `${tint.getHexString()}:${side}`;
     const tintedMaterialsByColor = this.tintedMaterialCache.get(baseMaterial);
 
