@@ -8,7 +8,7 @@ export type ElevationSprayConfig = {
   random: SeededRandom;
 };
 
-const SHOTS_PER_TILE_AT_MAX_DENSITY = 0.02;
+const SHOTS_PER_TILE_AT_MAX_DENSITY = 0.3;
 const FLAT_TO_MOUNTAIN_CHANCE = 0.15;
 
 export const applyElevationSpray = (

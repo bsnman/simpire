@@ -36,7 +36,7 @@ const DEFAULT_PARAMS: ContinentsParams = {
   tectonicStrength: 0.62,
   coastlineRoughness: 0.58,
   mountainIntensity: 0.58,
-  elevationSprayDensity: 0,
+  elevationSprayDensity: 0.5,
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -272,7 +272,7 @@ const buildContinentsPipelineConfig = (context: MapGeneratorContext, params: Con
     coastlineRoughness: params.coastlineRoughness,
     mountainIntensity: params.mountainIntensity,
     elevationSprayDensity: params.elevationSprayDensity,
-    shelfWidth: 2,
+    shelfWidth: 1,
   };
 };
 

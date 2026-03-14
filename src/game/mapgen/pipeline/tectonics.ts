@@ -113,12 +113,12 @@ export const applyTectonicPass = (
       }
     }
 
-    const boundaryFactor = boundaryContacts / 6;
+    const boundaryFactor = boundaryContacts / 5;
     const tectonicLift = uplift * 0.12 * strength;
-    const tectonicDrop = subsidence * 0.09 * strength;
-    const baseElevation = isLandAt(landMask, tileIndex) ? 0.56 : 0.24;
-    const baseNoise = (config.noiseAt(tile.q, tile.r, 'tectonic-base') - 0.5) * 0.06;
-    const jitter = (config.noiseAt(tile.q, tile.r, 'tectonic-jitter') - 0.5) * 0.08;
+    const tectonicDrop = subsidence * 0.0 * strength;
+    const baseElevation = isLandAt(landMask, tileIndex) ? 0.48 : 0.24;
+    const baseNoise = (config.noiseAt(tile.q, tile.r, 'tectonic-base') - 0.5) * 0.07;
+    const jitter = (config.noiseAt(tile.q, tile.r, 'tectonic-jitter') - 0.5) * 0.09;
 
     rawBoundaryIntensity[tileIndex] = boundaryFactor;
     rawElevation[tileIndex] =

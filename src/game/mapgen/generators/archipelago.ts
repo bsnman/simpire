@@ -34,9 +34,9 @@ const DEFAULT_PARAMS: ArchipelagoParams = {
   landmassCountMin: 11,
   landmassCountMax: 11,
   chainTendency: 0.64,
-  shelfWidth: 2,
+  shelfWidth: 1,
   tectonicStrength: 0.52,
-  elevationSprayDensity: 0,
+  elevationSprayDensity: 0.5,
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
