@@ -1,9 +1,25 @@
-import { BufferGeometry, Color, DoubleSide, Group, Mesh, MeshBasicMaterial, Texture } from 'three';
+import {
+  BufferGeometry,
+  Color,
+  DoubleSide,
+  Euler,
+  FrontSide,
+  Group,
+  InstancedMesh,
+  Matrix4,
+  Mesh,
+  MeshBasicMaterial,
+  Quaternion,
+  Texture,
+  Vector3,
+} from 'three';
 import { describe, expect, it, vi } from 'vitest';
 
 import { tiles } from '~/base/tiles';
-import { buildMapElevationObjectName } from '~/game/render/layers/mapLayerObjectNames';
-import { GLTF_IMPORT_CORRECTION_ROTATION_X } from '~/game/render/three/modelOrientation';
+import {
+  buildMapElevationBatchGroupName,
+  buildMapElevationBatchMeshObjectName,
+} from '~/game/render/layers/mapLayerObjectNames';
 import {
   TerrainDecorationFactory,
   type TerrainModelLoaderLike,
@@ -62,8 +78,18 @@ const createLoaderResponse = (scene: Group) =>
     scenes: [scene],
   }) as Awaited<ReturnType<TerrainModelLoaderLike['loadAsync']>>;
 
+const getFirstInstancedMesh = (targetGroup: Group): InstancedMesh => {
+  const mesh = targetGroup.children[0]?.children[0];
+
+  if (!(mesh instanceof InstancedMesh)) {
+    throw new Error('Expected first batch child to be an InstancedMesh.');
+  }
+
+  return mesh;
+};
+
 describe('TerrainDecorationFactory', () => {
-  it('uses deterministic scene object names and disposes loaded template resources on destroy', async () => {
+  it('renders elevation batches with stable names and disposes loaded template resources on destroy', async () => {
     const testMap = createTestMap('flat');
     const flatResources = createTemplateSceneResources();
     const hillResources = createTemplateSceneResources();
@@ -106,21 +132,27 @@ describe('TerrainDecorationFactory', () => {
     });
 
     expect(targetGroup.children).toHaveLength(1);
-    expect(targetGroup.children[0]?.name).toBe(buildMapElevationObjectName(toHexKey(0, 0), 'flat'));
-    expect(Number.isFinite(targetGroup.children[0]?.position.x)).toBe(true);
-    expect(Number.isFinite(targetGroup.children[0]?.position.y)).toBe(true);
-    expect(targetGroup.children[0]?.position.z).toBe(1);
-    expect(targetGroup.children[0]?.rotation.x).toBe(0);
-    expect(targetGroup.children[0]?.rotation.y).toBe(0);
-    expect(Number.isFinite(targetGroup.children[0]?.rotation.z)).toBe(true);
-    expect(targetGroup.children[0]?.children[0]?.rotation.x).toBeCloseTo(
-      GLTF_IMPORT_CORRECTION_ROTATION_X,
+    expect(targetGroup.children[0]?.name).toBe(buildMapElevationBatchGroupName('flat'));
+    expect(targetGroup.children[0]?.children).toHaveLength(1);
+    expect(targetGroup.children[0]?.children[0]?.name).toBe(
+      buildMapElevationBatchMeshObjectName('flat', 0),
     );
-    const flatMesh = targetGroup.children[0]?.getObjectByProperty('isMesh', true) as
-      | Mesh
-      | undefined;
-    expect(Array.isArray(flatMesh?.material)).toBe(false);
-    expect((flatMesh?.material as MeshBasicMaterial | undefined)?.side).not.toBe(DoubleSide);
+
+    const instancedMesh = getFirstInstancedMesh(targetGroup);
+    const instanceMatrix = new Matrix4();
+    const instancePosition = new Vector3();
+    const instanceQuaternion = new Quaternion();
+    const instanceScale = new Vector3();
+
+    instancedMesh.getMatrixAt(0, instanceMatrix);
+    instanceMatrix.decompose(instancePosition, instanceQuaternion, instanceScale);
+
+    expect(instancedMesh.count).toBe(1);
+    expect(instancePosition.z).toBeCloseTo(1, 6);
+    expect(Number.isFinite(instancePosition.x)).toBe(true);
+    expect(Number.isFinite(instancePosition.y)).toBe(true);
+    expect(instanceScale.x).toBeCloseTo(testMap.tileSize * 0.75, 6);
+    expect((instancedMesh.material as MeshBasicMaterial).side).toBe(FrontSide);
 
     factory.destroy();
 
@@ -135,7 +167,7 @@ describe('TerrainDecorationFactory', () => {
     expect(mountainTextureDispose).toHaveBeenCalledOnce();
   });
 
-  it('uses terrain-tinted materials for flat ground', async () => {
+  it('uses per-instance tint colors for flat ground batches', async () => {
     const testMap = createTestMap('flat');
     const flatResources = createTemplateSceneResources();
     const hillResources = createTemplateSceneResources();
@@ -162,6 +194,7 @@ describe('TerrainDecorationFactory', () => {
     const expectedFlatTint = new Color(tiles.grassland.color)
       .offsetHSL(0, -0.08, -0.08)
       .getHexString();
+    const instanceColor = new Color();
 
     await factory.populateTerrainDecorations({
       map: testMap,
@@ -171,17 +204,15 @@ describe('TerrainDecorationFactory', () => {
       isStale: () => false,
     });
 
-    const flatMesh = targetGroup.children[0]?.getObjectByProperty('isMesh', true) as
-      | Mesh
-      | undefined;
-    const flatMaterial = flatMesh?.material as MeshBasicMaterial | undefined;
+    const instancedMesh = getFirstInstancedMesh(targetGroup);
 
-    expect(Array.isArray(flatMesh?.material)).toBe(false);
-    expect(flatMaterial?.side).not.toBe(DoubleSide);
-    expect(flatMaterial?.color.getHexString()).toBe(expectedFlatTint);
+    instancedMesh.getColorAt(0, instanceColor);
+
+    expect(instanceColor.getHexString()).toBe(expectedFlatTint);
+    expect((instancedMesh.material as MeshBasicMaterial).side).toBe(FrontSide);
   });
 
-  it('uses double-sided terrain-tinted materials for mountains', async () => {
+  it('uses fixed-orientation double-sided batches for mountains', async () => {
     const testMap = createTestMap('mountain');
     const flatResources = createTemplateSceneResources();
     const hillResources = createTemplateSceneResources();
@@ -205,9 +236,10 @@ describe('TerrainDecorationFactory', () => {
     };
     const factory = new TerrainDecorationFactory(loader);
     const targetGroup = new Group();
-    const expectedMountainTint = new Color(tiles.grassland.color)
-      .offsetHSL(0, -0.08, -0.08)
-      .getHexString();
+    const instanceMatrix = new Matrix4();
+    const instancePosition = new Vector3();
+    const instanceQuaternion = new Quaternion();
+    const instanceScale = new Vector3();
 
     await factory.populateTerrainDecorations({
       map: testMap,
@@ -217,14 +249,13 @@ describe('TerrainDecorationFactory', () => {
       isStale: () => false,
     });
 
-    const mountainMesh = targetGroup.children[0]?.getObjectByProperty('isMesh', true) as
-      | Mesh
-      | undefined;
-    const mountainMaterial = mountainMesh?.material as MeshBasicMaterial | undefined;
+    const instancedMesh = getFirstInstancedMesh(targetGroup);
 
-    expect(Array.isArray(mountainMesh?.material)).toBe(false);
-    expect(mountainMaterial?.side).toBe(DoubleSide);
-    expect(mountainMaterial?.color.getHexString()).toBe(expectedMountainTint);
+    instancedMesh.getMatrixAt(0, instanceMatrix);
+    instanceMatrix.decompose(instancePosition, instanceQuaternion, instanceScale);
+
+    expect((instancedMesh.material as MeshBasicMaterial).side).toBe(DoubleSide);
+    expect(new Euler().setFromQuaternion(instanceQuaternion).z).toBeCloseTo(0, 6);
   });
 
   it('disposes late-loaded templates instead of retaining them after destroy', async () => {

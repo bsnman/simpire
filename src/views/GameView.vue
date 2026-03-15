@@ -18,6 +18,7 @@ import {
 } from '~/game/mapgen/repro';
 import { GameRenderer } from '~/game/render/GameRenderer';
 import type { MapRenderConfig, MapRenderConfigInput } from '~/game/render/mapRenderConfig';
+import type { RendererPerformanceStats } from '~/game/render/rendererPerformanceStats';
 import type { MapTile } from '~/types/map';
 import { useCurrentGameMapStore } from '~/stores/currentGame/map';
 import { useMapgenDebugStore } from '~/stores/debugger/mapgen';
@@ -65,6 +66,7 @@ const showDebugAxes = ref(false);
 const cameraTiltDegrees = ref(renderer.getTiltDegrees());
 const cameraZoomLevel = ref(renderer.getZoomLevel());
 const rendererLayerConfig = ref<MapRenderConfig>(renderer.getMapRenderConfig());
+const performanceStats = ref<RendererPerformanceStats>(renderer.getPerformanceStats());
 const mapgenDebugStatus = ref('');
 const mapgenDebugError = ref('');
 
@@ -481,6 +483,9 @@ onMounted(async () => {
   renderer.setHoveredTileChangeHandler((nextHoveredTile) => {
     hoveredMapTile.value = nextHoveredTile?.tile ?? null;
   });
+  renderer.setPerformanceStatsChangeHandler((nextStats) => {
+    performanceStats.value = nextStats;
+  });
   renderer.renderMap(currentMap.value);
   globalThis.document.addEventListener('pointerlockchange', onPointerLockChange);
   globalThis.document.addEventListener('pointerlockerror', onPointerLockError);
@@ -522,6 +527,7 @@ onUnmounted(() => {
   renderer.clearArrowKeyPan();
   renderer.clearHoveredTile();
   renderer.setHoveredTileChangeHandler(null);
+  renderer.setPerformanceStatsChangeHandler(null);
 
   if (globalThis.document.pointerLockElement === canvasRef.value) {
     globalThis.document.exitPointerLock();
@@ -562,6 +568,18 @@ onUnmounted(() => {
         </p>
         <p class="mapgen-debug-row">Zoom Level: {{ cameraZoomLevel.toFixed(2) }}x</p>
         <p class="mapgen-debug-row">Camera Tilt: {{ cameraTiltDegrees.toFixed(1) }} deg</p>
+        <p class="mapgen-debug-row mapgen-debug-row-spaced">Performance</p>
+        <p class="mapgen-debug-row">
+          FPS: {{ performanceStats.fps.toFixed(1) }} | Frame:
+          {{ performanceStats.frameTimeMs.toFixed(2) }} ms
+        </p>
+        <p class="mapgen-debug-row">
+          Draw Calls: {{ performanceStats.drawCalls }} | Triangles:
+          {{ performanceStats.triangles }}
+        </p>
+        <p class="mapgen-debug-row">
+          Lines: {{ performanceStats.lines }} | Points: {{ performanceStats.points }}
+        </p>
         <p class="mapgen-debug-row">
           Controls:
           {{

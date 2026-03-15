@@ -4,19 +4,31 @@ import {
   DoubleSide,
   FrontSide,
   Group,
+  InstancedMesh,
+  Matrix4,
+  Mesh,
+  Quaternion,
   Texture,
+  Vector3,
   type Material,
-  type Mesh,
   type Object3D,
 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 import { tiles } from '~/base/tiles';
-import { buildMapElevationObjectName } from '~/game/render/layers/mapLayerObjectNames';
+import type { ElevationType } from '~/base/elevation';
+import {
+  buildMapElevationBatchGroupName,
+  buildMapElevationBatchMeshObjectName,
+} from '~/game/render/layers/mapLayerObjectNames';
 import { axialToPixel } from '~/game/render/hexMath';
 import { orientImportedGltfRoot } from '~/game/render/three/modelOrientation';
+import {
+  extractInstancedTemplateParts,
+  type InstancedTemplateMaterial,
+  type InstancedTemplatePart,
+} from '~/game/render/three/instancedModelTemplate';
 import type { HexKey } from '~/types/hex';
-import type { ElevationType } from '~/base/elevation';
 import type { GameMap, MapTile } from '~/types/map';
 
 type PopulateTerrainDecorationsOptions = {
@@ -33,25 +45,21 @@ const TERRAIN_MODEL_PATHS: Partial<Record<ElevationType, string>> = {
   mountain: '/models/terrain/mountain-v5.glb',
 };
 
-const hashHexKey = (key: HexKey): number => {
-  let hash = 2166136261;
-
-  for (let index = 0; index < key.length; index += 1) {
-    hash ^= key.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-
-  return hash >>> 0;
-};
-
-const toUnitRandom = (seed: number): number => seed / 0xffffffff;
-
-const cloneModelTemplate = (template: Object3D): Object3D => template.clone(true);
-
 type ResourceDisposalTracker = {
   geometries: Set<BufferGeometry>;
   materials: Set<Material>;
   textures: Set<Texture>;
+};
+
+type TerrainTemplate = {
+  root: Object3D;
+  parts: readonly InstancedTemplatePart[];
+};
+
+type TerrainBatchInstance = {
+  matrix: Matrix4;
+  tint: Color;
+  tileKey: HexKey;
 };
 
 const createResourceDisposalTracker = (): ResourceDisposalTracker => ({
@@ -110,12 +118,48 @@ const buildTerrainTint = (tile: MapTile): Color => {
   return tint.offsetHSL(0, -0.08, -0.08);
 };
 
+const hashHexKey = (key: HexKey): number => {
+  let hash = 2166136261;
+
+  for (let index = 0; index < key.length; index += 1) {
+    hash ^= key.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
+};
+
+const toUnitRandom = (seed: number): number => seed / 0xffffffff;
+
+const updateTerrainTemplateMaterial = (
+  material: InstancedTemplateMaterial,
+  elevation: ElevationType,
+) => {
+  const side = elevation === 'flat' ? FrontSide : DoubleSide;
+  const materials = Array.isArray(material) ? material : [material];
+
+  materials.forEach((entry) => {
+    entry.side = side;
+    const tintableMaterial = entry as Material & {
+      color?: Color;
+      vertexColors?: boolean;
+    };
+
+    if (tintableMaterial.color?.isColor) {
+      tintableMaterial.color.set(0xffffff);
+    }
+
+    if ('vertexColors' in tintableMaterial) {
+      tintableMaterial.vertexColors = true;
+    }
+  });
+};
+
 export type TerrainModelLoaderLike = Pick<GLTFLoader, 'loadAsync'>;
 
 export class TerrainDecorationFactory {
   private readonly loader: TerrainModelLoaderLike;
-  private readonly templates = new Map<ElevationType, Object3D>();
-  private readonly tintedMaterialCache = new Map<Material, Map<string, Material>>();
+  private readonly templates = new Map<ElevationType, TerrainTemplate>();
   private templateLoadPromise: Promise<void> | null = null;
   private hasLoggedLoadError = false;
   private templateLifetimeToken = 0;
@@ -140,6 +184,10 @@ export class TerrainDecorationFactory {
     }
 
     const scale = Math.max(1, map.tileSize) * scaleMultiplier;
+    const batchInstances = new Map<ElevationType, TerrainBatchInstance[]>();
+    const position = new Vector3();
+    const rotation = new Quaternion();
+    const scaleVector = new Vector3(scale, scale, scale);
 
     for (const key of map.tileKeys) {
       if (isStale()) {
@@ -159,39 +207,71 @@ export class TerrainDecorationFactory {
       }
 
       const center = axialToPixel({ q: tile.q, r: tile.r }, map.tileSize, map.layout);
-      const instance = new Group();
-      const modelRoot = cloneModelTemplate(template);
-      const terrainTint = buildTerrainTint(tile);
       const seed = hashHexKey(key);
-      const yaw = toUnitRandom(seed) * Math.PI * 2;
       const jitterX =
         (toUnitRandom(Math.imul(seed ^ 0x9e3779b9, 1664525)) - 0.5) * map.tileSize * 0.08;
       const jitterY =
         (toUnitRandom(Math.imul(seed ^ 0x85ebca6b, 22695477)) - 0.5) * map.tileSize * 0.08;
 
-      instance.name = buildMapElevationObjectName(key, tile.elevation);
-      instance.add(modelRoot);
-      instance.position.set(
-        center.x + map.origin.x + jitterX,
-        center.y + map.origin.y + jitterY,
-        zOffset,
-      );
-      instance.rotation.z = yaw;
-      instance.scale.set(scale, scale, scale);
-      this.applyTerrainTint(instance, terrainTint);
-      targetGroup.add(instance);
+      position.set(center.x + map.origin.x + jitterX, center.y + map.origin.y + jitterY, zOffset);
+      rotation.identity();
+
+      const instanceMatrix = new Matrix4().compose(position.clone(), rotation.clone(), scaleVector);
+      const instances = batchInstances.get(tile.elevation) ?? [];
+
+      instances.push({
+        matrix: instanceMatrix,
+        tint: buildTerrainTint(tile),
+        tileKey: key,
+      });
+      batchInstances.set(tile.elevation, instances);
     }
+
+    batchInstances.forEach((instances, elevation) => {
+      const template = this.templates.get(elevation);
+
+      if (!template || !instances.length) {
+        return;
+      }
+
+      const batchGroup = new Group();
+      const combinedMatrix = new Matrix4();
+
+      batchGroup.name = buildMapElevationBatchGroupName(elevation);
+
+      template.parts.forEach((part, meshIndex) => {
+        const instancedMesh = new InstancedMesh(part.geometry, part.material, instances.length);
+
+        instancedMesh.name = buildMapElevationBatchMeshObjectName(elevation, meshIndex);
+        instancedMesh.renderOrder = part.renderOrder;
+        instancedMesh.userData.instanceMetadata = instances.map((instance, instanceIndex) => ({
+          instanceId: instanceIndex,
+          tileKey: instance.tileKey,
+          elevation,
+        }));
+
+        instances.forEach((instance, instanceIndex) => {
+          combinedMatrix.multiplyMatrices(instance.matrix, part.matrixWorld);
+          instancedMesh.setMatrixAt(instanceIndex, combinedMatrix);
+          instancedMesh.setColorAt(instanceIndex, instance.tint);
+        });
+
+        instancedMesh.instanceMatrix.needsUpdate = true;
+        if (instancedMesh.instanceColor) {
+          instancedMesh.instanceColor.needsUpdate = true;
+        }
+
+        batchGroup.add(instancedMesh);
+      });
+
+      targetGroup.add(batchGroup);
+    });
   }
 
   destroy() {
     this.destroyed = true;
     this.templateLifetimeToken += 1;
     this.disposeTemplates();
-    this.tintedMaterialCache.forEach((tintedMaterialsByColor) => {
-      tintedMaterialsByColor.forEach((material) => material.dispose());
-      tintedMaterialsByColor.clear();
-    });
-    this.tintedMaterialCache.clear();
     this.templateLoadPromise = null;
   }
 
@@ -207,7 +287,7 @@ export class TerrainDecorationFactory {
     this.destroyed = false;
     const loadToken = this.templateLifetimeToken;
     const entries = Object.entries(TERRAIN_MODEL_PATHS) as [ElevationType, string][];
-    const loadedTemplates = new Map<ElevationType, Object3D>();
+    const loadedTemplates = new Map<ElevationType, TerrainTemplate>();
 
     this.templateLoadPromise = Promise.allSettled(
       entries.map(async ([elevation, path]) => {
@@ -219,8 +299,13 @@ export class TerrainDecorationFactory {
         }
 
         const orientedRoot = orientImportedGltfRoot(root);
-        orientedRoot.updateMatrixWorld(true);
-        loadedTemplates.set(elevation, orientedRoot);
+        const parts = extractInstancedTemplateParts(orientedRoot);
+
+        parts.forEach((part) => updateTerrainTemplateMaterial(part.material, elevation));
+        loadedTemplates.set(elevation, {
+          root: orientedRoot,
+          parts,
+        });
       }),
     )
       .then((results) => {
@@ -236,7 +321,7 @@ export class TerrainDecorationFactory {
           const disposalTracker = createResourceDisposalTracker();
 
           loadedTemplates.forEach((template) => {
-            disposeObject3DResources(template, disposalTracker);
+            disposeObject3DResources(template.root, disposalTracker);
           });
           loadedTemplates.clear();
         }
@@ -270,53 +355,8 @@ export class TerrainDecorationFactory {
     const disposalTracker = createResourceDisposalTracker();
 
     this.templates.forEach((template) => {
-      disposeObject3DResources(template, disposalTracker);
+      disposeObject3DResources(template.root, disposalTracker);
     });
     this.templates.clear();
-  }
-
-  private applyTerrainTint(instance: Object3D, tint: Color) {
-    instance.traverse((node) => {
-      const mesh = node as Mesh;
-
-      if (!mesh.isMesh) {
-        return;
-      }
-
-      if (Array.isArray(mesh.material)) {
-        mesh.material = mesh.material.map((material) => this.getTintedMaterial(material, tint));
-        return;
-      }
-
-      mesh.material = this.getTintedMaterial(mesh.material, tint);
-    });
-  }
-
-  private getTintedMaterial(baseMaterial: Material, tint: Color): Material {
-    const side = DoubleSide;
-    const tintKey = `${tint.getHexString()}:${side}`;
-    const tintedMaterialsByColor = this.tintedMaterialCache.get(baseMaterial);
-
-    if (tintedMaterialsByColor?.has(tintKey)) {
-      return tintedMaterialsByColor.get(tintKey) ?? baseMaterial;
-    }
-
-    const tinted = baseMaterial.clone();
-    const tintedWithColor = tinted as Material & { color?: Color };
-
-    if (tintedWithColor.color?.isColor) {
-      tintedWithColor.color.copy(tint);
-    }
-
-    tinted.side = side;
-
-    const cache = tintedMaterialsByColor ?? new Map<string, Material>();
-    cache.set(tintKey, tinted);
-
-    if (!tintedMaterialsByColor) {
-      this.tintedMaterialCache.set(baseMaterial, cache);
-    }
-
-    return tinted;
   }
 }

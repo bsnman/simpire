@@ -26,6 +26,10 @@ import {
   type MapRenderConfig,
   type MapRenderConfigInput,
 } from '~/game/render/mapRenderConfig';
+import {
+  DEFAULT_RENDERER_PERFORMANCE_STATS,
+  type RendererPerformanceStats,
+} from '~/game/render/rendererPerformanceStats';
 import { createSceneSetup, type ThreeSceneSetup } from '~/game/render/three/sceneSetup';
 
 type ArrowKey = 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown';
@@ -70,6 +74,8 @@ export class GameRenderer {
   private static readonly MIN_DEBUG_TILT_RADIANS = (-85 * Math.PI) / 180;
   private static readonly MAX_DEBUG_TILT_RADIANS = (85 * Math.PI) / 180;
   private static readonly DEBUG_AXES_SIZE = 360;
+  private static readonly PERFORMANCE_SAMPLE_SIZE = 24;
+  private static readonly PERFORMANCE_NOTIFY_INTERVAL_MS = 200;
 
   private readonly mapLayer: MapLayerLike;
   private readonly raycaster = new Raycaster();
@@ -110,6 +116,10 @@ export class GameRenderer {
   private currentMapRenderConfig: MapRenderConfig =
     normalizeMapRenderConfig(DEFAULT_MAP_RENDER_CONFIG);
   private lastRenderedMap: GameMap | null = null;
+  private performanceStats: RendererPerformanceStats = { ...DEFAULT_RENDERER_PERFORMANCE_STATS };
+  private performanceStatsChangeHandler: ((stats: RendererPerformanceStats) => void) | null = null;
+  private readonly frameTimeSamples: number[] = [];
+  private lastPerformanceNotifyAt = 0;
 
   constructor({
     mapLayer = new MapLayer(),
@@ -175,6 +185,20 @@ export class GameRenderer {
 
   getMapRenderConfig(): MapRenderConfig {
     return normalizeMapRenderConfig(this.currentMapRenderConfig);
+  }
+
+  getPerformanceStats(): RendererPerformanceStats {
+    return {
+      ...this.performanceStats,
+    };
+  }
+
+  setPerformanceStatsChangeHandler(handler: ((stats: RendererPerformanceStats) => void) | null) {
+    this.performanceStatsChangeHandler = handler;
+
+    if (handler) {
+      handler(this.getPerformanceStats());
+    }
   }
 
   setHoveredTileChangeHandler(handler: ((hoveredTile: HoveredTile | null) => void) | null) {
@@ -374,6 +398,10 @@ export class GameRenderer {
     this.edgePointerViewportSize = null;
     this.lastRenderedMap = null;
     this.currentMapRenderConfig = normalizeMapRenderConfig(DEFAULT_MAP_RENDER_CONFIG);
+    this.frameTimeSamples.length = 0;
+    this.performanceStats = { ...DEFAULT_RENDERER_PERFORMANCE_STATS };
+    this.lastPerformanceNotifyAt = 0;
+    this.notifyPerformanceStatsChange();
     this.clearArrowKeyPan();
     this.cameraFocusWorld.set(0, 0, 0);
     this.cameraFocusInitialized = false;
@@ -618,6 +646,53 @@ export class GameRenderer {
     }
 
     this.sceneSetup.renderer.render(this.sceneSetup.scene, this.sceneSetup.camera);
+    this.updatePerformanceStats(timestamp, deltaSeconds * 1000);
     this.animationFrameHandle = globalThis.window.requestAnimationFrame(this.handleFrame);
   };
+
+  private updatePerformanceStats(timestamp: number, frameTimeMs: number) {
+    if (!this.sceneSetup) {
+      return;
+    }
+
+    if (frameTimeMs > 0) {
+      this.frameTimeSamples.push(frameTimeMs);
+
+      if (this.frameTimeSamples.length > GameRenderer.PERFORMANCE_SAMPLE_SIZE) {
+        this.frameTimeSamples.shift();
+      }
+    }
+
+    const sampleCount = this.frameTimeSamples.length;
+    const averageFrameTimeMs =
+      sampleCount > 0
+        ? this.frameTimeSamples.reduce((sum, sample) => sum + sample, 0) / sampleCount
+        : 0;
+    const renderInfo = this.sceneSetup.renderer.info.render;
+
+    this.performanceStats = {
+      fps: averageFrameTimeMs > 0 ? 1000 / averageFrameTimeMs : 0,
+      frameTimeMs: averageFrameTimeMs,
+      drawCalls: renderInfo.calls,
+      triangles: renderInfo.triangles,
+      lines: renderInfo.lines,
+      points: renderInfo.points,
+    };
+
+    if (
+      timestamp - this.lastPerformanceNotifyAt >= GameRenderer.PERFORMANCE_NOTIFY_INTERVAL_MS ||
+      this.lastPerformanceNotifyAt === 0
+    ) {
+      this.lastPerformanceNotifyAt = timestamp;
+      this.notifyPerformanceStatsChange();
+    }
+  }
+
+  private notifyPerformanceStatsChange() {
+    if (!this.performanceStatsChangeHandler) {
+      return;
+    }
+
+    this.performanceStatsChangeHandler(this.getPerformanceStats());
+  }
 }

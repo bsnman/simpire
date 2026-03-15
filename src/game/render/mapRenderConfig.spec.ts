@@ -127,7 +127,7 @@ describe('mapRenderConfig', () => {
       elevation: DEFAULT_MAP_RENDER_CONFIG.elevation,
       terrainFeature: {
         enabled: true,
-        instancesPerTile: 4,
+        instancesPerTile: DEFAULT_MAP_RENDER_CONFIG.terrainFeature.instancesPerTile,
         scaleMultiplier: 1.2,
         featureOverrides: {
           forest: {

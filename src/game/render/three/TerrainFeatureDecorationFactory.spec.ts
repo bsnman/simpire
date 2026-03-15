@@ -1,12 +1,11 @@
-import { BufferGeometry, Group, Mesh, MeshBasicMaterial, Texture } from 'three';
+import { BufferGeometry, Group, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, Texture } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 
 import { buildMapTileRenderData } from '~/game/render/layers/mapTileRenderData';
 import {
-  buildMapTerrainFeatureClusterObjectName,
-  buildMapTerrainFeatureInstanceObjectName,
+  buildMapTerrainFeatureBatchGroupName,
+  buildMapTerrainFeatureBatchMeshObjectName,
 } from '~/game/render/layers/mapLayerObjectNames';
-import { GLTF_IMPORT_CORRECTION_ROTATION_X } from '~/game/render/three/modelOrientation';
 import {
   TerrainFeatureDecorationFactory,
   type TerrainFeatureModelLoaderLike,
@@ -65,8 +64,30 @@ const createLoaderResponse = (scene: Group) =>
     scenes: [scene],
   }) as Awaited<ReturnType<TerrainFeatureModelLoaderLike['loadAsync']>>;
 
+const getFirstInstancedMesh = (targetGroup: Group): InstancedMesh => {
+  const mesh = targetGroup.children[0]?.children[0];
+
+  if (!(mesh instanceof InstancedMesh)) {
+    throw new Error('Expected first terrain-feature batch child to be an InstancedMesh.');
+  }
+
+  return mesh;
+};
+
+const collectInstanceMatrices = (instancedMesh: InstancedMesh): number[][] => {
+  const matrix = new Matrix4();
+  const matrices: number[][] = [];
+
+  for (let index = 0; index < instancedMesh.count; index += 1) {
+    instancedMesh.getMatrixAt(index, matrix);
+    matrices.push(matrix.toArray());
+  }
+
+  return matrices;
+};
+
 describe('TerrainFeatureDecorationFactory', () => {
-  it('renders deterministic forest clusters on flat tiles', async () => {
+  it('renders deterministic forest batches on flat tiles', async () => {
     const testMap = createTestMap('flat', 'forest');
     const forestResources = createTemplateSceneResources();
     const loader: TerrainFeatureModelLoaderLike = {
@@ -101,17 +122,40 @@ describe('TerrainFeatureDecorationFactory', () => {
     });
 
     expect(targetGroup.children).toHaveLength(1);
-    expect(targetGroup.children[0]?.name).toBe(
-      buildMapTerrainFeatureClusterObjectName(toHexKey(0, 0), 'forest'),
-    );
-    expect(targetGroup.children[0]?.children).toHaveLength(4);
+    expect(targetGroup.children[0]?.name).toBe(buildMapTerrainFeatureBatchGroupName('forest'));
     expect(targetGroup.children[0]?.children[0]?.name).toBe(
-      buildMapTerrainFeatureInstanceObjectName(toHexKey(0, 0), 'forest', 0),
+      buildMapTerrainFeatureBatchMeshObjectName('forest', 0),
     );
-    expect(targetGroup.children[0]?.children[0]?.position.z).toBeGreaterThan(0.1);
-    expect(targetGroup.children[0]?.children[0]?.children[0]?.rotation.x).toBeCloseTo(
-      GLTF_IMPORT_CORRECTION_ROTATION_X,
-    );
+
+    const instancedMesh = getFirstInstancedMesh(targetGroup);
+
+    expect(instancedMesh.count).toBe(4);
+    expect(instancedMesh.userData.instanceMetadata).toEqual([
+      {
+        batchInstanceIndex: 0,
+        tileKey: toHexKey(0, 0),
+        terrainFeatureId: 'forest',
+        instanceIndex: 0,
+      },
+      {
+        batchInstanceIndex: 1,
+        tileKey: toHexKey(0, 0),
+        terrainFeatureId: 'forest',
+        instanceIndex: 1,
+      },
+      {
+        batchInstanceIndex: 2,
+        tileKey: toHexKey(0, 0),
+        terrainFeatureId: 'forest',
+        instanceIndex: 2,
+      },
+      {
+        batchInstanceIndex: 3,
+        tileKey: toHexKey(0, 0),
+        terrainFeatureId: 'forest',
+        instanceIndex: 3,
+      },
+    ]);
 
     const rerenderGroup = new Group();
     await factory.populateTerrainFeatureDecorations({
@@ -132,22 +176,8 @@ describe('TerrainFeatureDecorationFactory', () => {
       isStale: () => false,
     });
 
-    expect(
-      rerenderGroup.children[0]?.children.map((child) => ({
-        x: child.position.x,
-        y: child.position.y,
-        z: child.position.z,
-        rotationZ: child.rotation.z,
-        scaleX: child.scale.x,
-      })),
-    ).toEqual(
-      targetGroup.children[0]?.children.map((child) => ({
-        x: child.position.x,
-        y: child.position.y,
-        z: child.position.z,
-        rotationZ: child.rotation.z,
-        scaleX: child.scale.x,
-      })),
+    expect(collectInstanceMatrices(getFirstInstancedMesh(rerenderGroup))).toEqual(
+      collectInstanceMatrices(instancedMesh),
     );
   });
 
@@ -165,6 +195,7 @@ describe('TerrainFeatureDecorationFactory', () => {
     };
     const factory = new TerrainFeatureDecorationFactory(loader);
     const targetGroup = new Group();
+    const matrix = new Matrix4();
 
     await factory.populateTerrainFeatureDecorations({
       map: testMap,
@@ -184,7 +215,11 @@ describe('TerrainFeatureDecorationFactory', () => {
       isStale: () => false,
     });
 
-    const zValues = targetGroup.children[0]?.children.map((child) => child.position.z) ?? [];
+    const instancedMesh = getFirstInstancedMesh(targetGroup);
+    const zValues = Array.from({ length: instancedMesh.count }, (_, index) => {
+      instancedMesh.getMatrixAt(index, matrix);
+      return matrix.elements[14] ?? 0;
+    });
 
     expect(zValues).toHaveLength(4);
     expect(Math.min(...zValues)).toBeGreaterThan(0.1);

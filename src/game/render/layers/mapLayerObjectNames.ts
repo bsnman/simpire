@@ -18,6 +18,14 @@ export const buildMapHexOutlineObjectName = (tileKey: HexKey): string =>
 export const buildMapElevationObjectName = (tileKey: HexKey, elevation: ElevationType): string =>
   `${MAP_ELEVATION_LAYER_GROUP_NAME}:${elevation}:${tileKey}`;
 
+export const buildMapElevationBatchGroupName = (elevation: ElevationType): string =>
+  `${MAP_ELEVATION_LAYER_GROUP_NAME}:${elevation}:batch`;
+
+export const buildMapElevationBatchMeshObjectName = (
+  elevation: ElevationType,
+  meshIndex: number,
+): string => `${MAP_ELEVATION_LAYER_GROUP_NAME}:${elevation}:batch:mesh:${meshIndex}`;
+
 export const buildMapTerrainFeatureClusterObjectName = (
   tileKey: HexKey,
   terrainFeatureId: TerrainFeatureType,
@@ -29,6 +37,15 @@ export const buildMapTerrainFeatureInstanceObjectName = (
   instanceIndex: number,
 ): string =>
   `${MAP_TERRAIN_FEATURE_LAYER_GROUP_NAME}:${terrainFeatureId}:${tileKey}:instance:${instanceIndex}`;
+
+export const buildMapTerrainFeatureBatchGroupName = (
+  terrainFeatureId: TerrainFeatureType,
+): string => `${MAP_TERRAIN_FEATURE_LAYER_GROUP_NAME}:${terrainFeatureId}:batch`;
+
+export const buildMapTerrainFeatureBatchMeshObjectName = (
+  terrainFeatureId: TerrainFeatureType,
+  meshIndex: number,
+): string => `${MAP_TERRAIN_FEATURE_LAYER_GROUP_NAME}:${terrainFeatureId}:batch:mesh:${meshIndex}`;
 
 export const buildMapInteractionObjectName = (tileKey: HexKey): string =>
   `${MAP_INTERACTION_LAYER_GROUP_NAME}:${tileKey}`;

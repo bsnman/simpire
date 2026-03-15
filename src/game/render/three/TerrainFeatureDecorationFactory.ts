@@ -1,12 +1,23 @@
-import { BufferGeometry, Group, Texture, type Material, type Mesh, type Object3D } from 'three';
+import {
+  BufferGeometry,
+  Group,
+  InstancedMesh,
+  Matrix4,
+  Mesh,
+  Quaternion,
+  Texture,
+  Vector3,
+  type Material,
+  type Object3D,
+} from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 import type { ElevationType } from '~/base/elevation';
 import type { TerrainFeatureType } from '~/base/terrainFeatures';
 import type { MapTileRenderData } from '~/game/render/layers/mapTileRenderData';
 import {
-  buildMapTerrainFeatureClusterObjectName,
-  buildMapTerrainFeatureInstanceObjectName,
+  buildMapTerrainFeatureBatchGroupName,
+  buildMapTerrainFeatureBatchMeshObjectName,
 } from '~/game/render/layers/mapLayerObjectNames';
 import type {
   ElevationLayerConfig,
@@ -14,6 +25,10 @@ import type {
   TerrainFeatureLayerFeatureOverride,
 } from '~/game/render/mapRenderConfig';
 import { orientImportedGltfRoot } from '~/game/render/three/modelOrientation';
+import {
+  extractInstancedTemplateParts,
+  type InstancedTemplatePart,
+} from '~/game/render/three/instancedModelTemplate';
 import {
   terrainFeatureRenderDefinitions,
   type TerrainFeatureAnchor,
@@ -37,7 +52,20 @@ type ResourceDisposalTracker = {
   textures: Set<Texture>;
 };
 
+type TerrainFeatureTemplate = {
+  root: Object3D;
+  parts: readonly InstancedTemplatePart[];
+};
+
+type TerrainFeatureBatchInstance = {
+  matrix: Matrix4;
+  tileKey: HexKey;
+  terrainFeatureId: TerrainFeatureType;
+  instanceIndex: number;
+};
+
 export type TerrainFeatureModelLoaderLike = Pick<GLTFLoader, 'loadAsync'>;
+const Z_AXIS = new Vector3(0, 0, 1);
 
 const createResourceDisposalTracker = (): ResourceDisposalTracker => ({
   geometries: new Set<BufferGeometry>(),
@@ -89,8 +117,6 @@ const disposeObject3DResources = (object: Object3D, disposalTracker: ResourceDis
     disposeMaterialResources(mesh.material, disposalTracker);
   });
 };
-
-const cloneModelTemplate = (template: Object3D): Object3D => template.clone(true);
 
 const hashString = (value: string): number => {
   let hash = 2166136261;
@@ -184,7 +210,7 @@ const selectAnchors = (
 
 export class TerrainFeatureDecorationFactory {
   private readonly loader: TerrainFeatureModelLoaderLike;
-  private readonly templates = new Map<TerrainFeatureType, Object3D>();
+  private readonly templates = new Map<TerrainFeatureType, TerrainFeatureTemplate>();
   private templateLoadPromise: Promise<void> | null = null;
   private hasLoggedLoadError = false;
   private templateLifetimeToken = 0;
@@ -210,6 +236,10 @@ export class TerrainFeatureDecorationFactory {
     }
 
     const elevationScale = Math.max(1, map.tileSize) * elevationConfig.scaleMultiplier;
+    const batchInstances = new Map<TerrainFeatureType, TerrainFeatureBatchInstance[]>();
+    const position = new Vector3();
+    const rotation = new Quaternion();
+    const scaleVector = new Vector3();
 
     for (const tileData of tileRenderData) {
       if (isStale()) {
@@ -241,13 +271,7 @@ export class TerrainFeatureDecorationFactory {
         anchors.length,
       );
 
-      if (instanceCount <= 0) {
-        continue;
-      }
-
-      const template = this.templates.get(terrainFeatureId);
-
-      if (!template) {
+      if (instanceCount <= 0 || !this.templates.has(terrainFeatureId)) {
         continue;
       }
 
@@ -257,37 +281,71 @@ export class TerrainFeatureDecorationFactory {
         continue;
       }
 
-      const cluster = new Group();
       const selectedAnchors = selectAnchors(terrainFeatureId, tileData.key, anchors, instanceCount);
-
-      cluster.name = buildMapTerrainFeatureClusterObjectName(tileData.key, terrainFeatureId);
-      cluster.position.set(tileData.worldX, tileData.worldY, 0);
+      const instances = batchInstances.get(terrainFeatureId) ?? [];
 
       selectedAnchors.forEach((anchor, instanceIndex) => {
         const instanceSeed = hashString(`${tileData.key}:${terrainFeatureId}:${instanceIndex}`);
-        const modelRoot = cloneModelTemplate(template);
-        const instance = new Group();
         const scaleVariation = 0.9 + toUnitRandom(mixSeed(instanceSeed, 0x9e3779b9)) * 0.2;
         const yaw = toUnitRandom(mixSeed(instanceSeed, 0x85ebca6b)) * Math.PI * 2;
 
-        instance.name = buildMapTerrainFeatureInstanceObjectName(
-          tileData.key,
-          terrainFeatureId,
-          instanceIndex,
-        );
-        instance.add(modelRoot);
-        instance.position.set(
-          anchor.x * map.tileSize,
-          anchor.y * map.tileSize,
+        position.set(
+          tileData.worldX + anchor.x * map.tileSize,
+          tileData.worldY + anchor.y * map.tileSize,
           elevationConfig.zOffset + anchor.z * elevationScale,
         );
-        instance.rotation.z = yaw;
-        instance.scale.setScalar(scale * scaleVariation);
-        cluster.add(instance);
+        rotation.setFromAxisAngle(Z_AXIS, yaw);
+        scaleVector.setScalar(scale * scaleVariation);
+
+        instances.push({
+          matrix: new Matrix4().compose(position.clone(), rotation.clone(), scaleVector.clone()),
+          tileKey: tileData.key,
+          terrainFeatureId,
+          instanceIndex,
+        });
       });
 
-      targetGroup.add(cluster);
+      batchInstances.set(terrainFeatureId, instances);
     }
+
+    batchInstances.forEach((instances, terrainFeatureId) => {
+      const template = this.templates.get(terrainFeatureId);
+
+      if (!template || !instances.length) {
+        return;
+      }
+
+      const batchGroup = new Group();
+      const combinedMatrix = new Matrix4();
+
+      batchGroup.name = buildMapTerrainFeatureBatchGroupName(terrainFeatureId);
+
+      template.parts.forEach((part, meshIndex) => {
+        const instancedMesh = new InstancedMesh(part.geometry, part.material, instances.length);
+
+        instancedMesh.name = buildMapTerrainFeatureBatchMeshObjectName(
+          terrainFeatureId,
+          meshIndex,
+        );
+        instancedMesh.renderOrder = part.renderOrder;
+        instancedMesh.userData.instanceMetadata = instances.map((instance, batchInstanceIndex) => ({
+          batchInstanceIndex,
+          tileKey: instance.tileKey,
+          terrainFeatureId: instance.terrainFeatureId,
+          instanceIndex: instance.instanceIndex,
+        }));
+
+        instances.forEach((instance, batchInstanceIndex) => {
+          combinedMatrix.multiplyMatrices(instance.matrix, part.matrixWorld);
+          instancedMesh.setMatrixAt(batchInstanceIndex, combinedMatrix);
+        });
+
+        instancedMesh.instanceMatrix.needsUpdate = true;
+        batchGroup.add(instancedMesh);
+      });
+
+      targetGroup.add(batchGroup);
+    });
   }
 
   destroy() {
@@ -312,7 +370,7 @@ export class TerrainFeatureDecorationFactory {
       (entry): entry is [TerrainFeatureType, TerrainFeatureRenderDefinition] =>
         entry[1] !== undefined,
     );
-    const loadedTemplates = new Map<TerrainFeatureType, Object3D>();
+    const loadedTemplates = new Map<TerrainFeatureType, TerrainFeatureTemplate>();
 
     this.templateLoadPromise = Promise.allSettled(
       entries.map(async ([terrainFeatureId, definition]) => {
@@ -324,8 +382,11 @@ export class TerrainFeatureDecorationFactory {
         }
 
         const orientedRoot = orientImportedGltfRoot(root);
-        orientedRoot.updateMatrixWorld(true);
-        loadedTemplates.set(terrainFeatureId, orientedRoot);
+
+        loadedTemplates.set(terrainFeatureId, {
+          root: orientedRoot,
+          parts: extractInstancedTemplateParts(orientedRoot),
+        });
       }),
     )
       .then((results) => {
@@ -341,7 +402,7 @@ export class TerrainFeatureDecorationFactory {
           const disposalTracker = createResourceDisposalTracker();
 
           loadedTemplates.forEach((template) => {
-            disposeObject3DResources(template, disposalTracker);
+            disposeObject3DResources(template.root, disposalTracker);
           });
           loadedTemplates.clear();
         }
@@ -378,7 +439,7 @@ export class TerrainFeatureDecorationFactory {
     const disposalTracker = createResourceDisposalTracker();
 
     this.templates.forEach((template) => {
-      disposeObject3DResources(template, disposalTracker);
+      disposeObject3DResources(template.root, disposalTracker);
     });
     this.templates.clear();
   }

@@ -6,8 +6,8 @@ const MAX_DEVICE_PIXEL_RATIO = 2;
 const SKY_LIGHT_COLOR = 0xcddcf5;
 const GROUND_BOUNCE_COLOR = 0x3d3128;
 const SUN_LIGHT_COLOR = 0xfff3d8;
-const HEMISPHERE_INTENSITY = 8;
-const SUNLIGHT_INTENSITY = 3.5;
+const HEMISPHERE_INTENSITY = 0.8;
+const SUNLIGHT_INTENSITY = 0.35;
 
 type ViewportSize = {
   width: number;

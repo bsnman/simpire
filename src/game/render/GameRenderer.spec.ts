@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GameRenderer } from '~/game/render/GameRenderer';
 import { MapLayer } from '~/game/render/layers/MapLayer';
 import { DEFAULT_MAP_RENDER_CONFIG, normalizeMapRenderConfig } from '~/game/render/mapRenderConfig';
+import { DEFAULT_RENDERER_PERFORMANCE_STATS } from '~/game/render/rendererPerformanceStats';
 import type { ThreeSceneSetup } from '~/game/render/three/sceneSetup';
 import { toHexKey } from '~/types/hex';
 import type { GameMap } from '~/types/map';
@@ -59,6 +60,14 @@ const createSceneSetupStub = (): ThreeSceneSetup => ({
   camera: new OrthographicCamera(-100, 100, 100, -100, 0.1, 2000),
   renderer: {
     render: vi.fn(),
+    info: {
+      render: {
+        calls: 0,
+        triangles: 0,
+        lines: 0,
+        points: 0,
+      },
+    },
   } as unknown as ThreeSceneSetup['renderer'],
   getViewportSize: () => VIEWPORT_SIZE,
   syncViewportSize: () => VIEWPORT_SIZE,
@@ -234,6 +243,67 @@ describe('GameRenderer', () => {
     renderer.destroy();
 
     expect(mapLayer.destroy).toHaveBeenCalledOnce();
+  });
+
+  it('reports smoothed renderer performance stats and resets them on destroy', async () => {
+    let animationFrameCallback: FrameRequestCallback | null = null;
+
+    vi.spyOn(globalThis.window, 'requestAnimationFrame').mockImplementation((callback) => {
+      animationFrameCallback = callback;
+      return 1;
+    });
+
+    const mapLayer = createMapLayerStub();
+    const sceneSetup = createSceneSetupStub();
+    const rendererRender = vi.fn(() => {
+      const renderInfo = sceneSetup.renderer.info.render;
+
+      renderInfo.calls = 12;
+      renderInfo.triangles = 3456;
+      renderInfo.lines = 18;
+      renderInfo.points = 6;
+    });
+
+    sceneSetup.renderer.render = rendererRender as ThreeSceneSetup['renderer']['render'];
+
+    const renderer = new GameRenderer({
+      mapLayer,
+      sceneSetupFactory: vi.fn(() => sceneSetup),
+    });
+    const canvas = globalThis.document.createElement('canvas');
+    const statsUpdates: ReturnType<GameRenderer['getPerformanceStats']>[] = [];
+
+    await renderer.init(canvas);
+    renderer.setPerformanceStatsChangeHandler((stats) => {
+      statsUpdates.push(stats);
+    });
+    renderer.renderMap(TEST_MAP);
+
+    if (animationFrameCallback) {
+      (animationFrameCallback as FrameRequestCallback)(1000);
+    }
+
+    if (animationFrameCallback) {
+      (animationFrameCallback as FrameRequestCallback)(1210);
+    }
+
+    const latestStats = renderer.getPerformanceStats();
+
+    expect(latestStats.fps).toBeGreaterThan(4.5);
+    expect(latestStats.fps).toBeLessThan(5.5);
+    expect(latestStats.frameTimeMs).toBeCloseTo(210, 1);
+    expect(latestStats.drawCalls).toBe(12);
+    expect(latestStats.triangles).toBe(3456);
+    expect(latestStats.lines).toBe(18);
+    expect(latestStats.points).toBe(6);
+    expect(statsUpdates.some((stats) => stats.drawCalls === 12 && stats.triangles === 3456)).toBe(
+      true,
+    );
+
+    renderer.destroy();
+
+    expect(renderer.getPerformanceStats()).toEqual(DEFAULT_RENDERER_PERFORMANCE_STATS);
+    expect(statsUpdates[statsUpdates.length - 1]).toEqual(DEFAULT_RENDERER_PERFORMANCE_STATS);
   });
 
   it('moves the camera for pan zoom and orbit without transforming the map root', async () => {
