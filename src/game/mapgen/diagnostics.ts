@@ -1,15 +1,15 @@
-﻿import { generateMap } from '~/game/mapgen';
-import type { MapGenerationRequest } from '~/game/mapgen/contracts';
-import { createRectCoords } from '~/game/mapgen/helpers';
-import { createMapGrid } from '~/game/mapgen/pipeline/grid';
+import { generateMap } from '/game/mapgen';
+import type { MapGenerationRequest } from '/game/mapgen/contracts';
+import { createRectCoords } from '/game/mapgen/helpers';
+import { createMapGrid } from '/game/mapgen/pipeline/support/grid';
 import {
   aggregateMapQualityMetrics,
   buildLandMaskFromTiles,
   calculateMapQualityMetrics,
   type AggregatedMapQualityMetrics,
   type MapQualityMetrics,
-} from '~/game/mapgen/pipeline/metrics';
-import type { MapTile } from '~/types/map';
+} from '/game/mapgen/analysis/metrics';
+import type { MapTile } from '/types/map';
 
 export type MapgenDiagnosticsScenario = {
   algorithmId: string;

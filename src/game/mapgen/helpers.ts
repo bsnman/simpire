@@ -1,8 +1,8 @@
-import type { HexCoord } from '~/types/hex';
-import { toHexKey } from '~/types/hex';
-import type { TileType } from '~/base/tiles';
+import type { HexCoord } from '/types/hex';
+import { toHexKey } from '/types/hex';
+import type { TileType } from '/base/tiles';
 
-import type { SeededRandom } from '~/game/mapgen/random';
+import type { SeededRandom } from '/game/mapgen/random';
 
 export const clamp = (value: number, min: number, max: number): number =>
   Math.max(min, Math.min(max, value));

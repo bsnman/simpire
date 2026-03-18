@@ -1,4 +1,4 @@
-import { clamp } from '~/game/mapgen/helpers';
+import { clamp } from '/game/mapgen/helpers';
 
 export type FieldNoiseAt = (q: number, r: number, salt?: string) => number;
 
@@ -26,12 +26,7 @@ const lerp = (start: number, end: number, amount: number): number => start + (en
 
 const smoothstep = (value: number): number => value * value * (3 - 2 * value);
 
-const sampleValueNoise = (
-  noiseAt: FieldNoiseAt,
-  x: number,
-  y: number,
-  salt: string,
-): number => {
+const sampleValueNoise = (noiseAt: FieldNoiseAt, x: number, y: number, salt: string): number => {
   const x0 = Math.floor(x);
   const y0 = Math.floor(y);
   const x1 = x0 + 1;
@@ -61,7 +56,8 @@ const sampleFractalNoise = (
   let amplitudeSum = 0;
 
   for (let octave = 0; octave < octaves; octave += 1) {
-    value += sampleValueNoise(noiseAt, x * frequency, y * frequency, `${salt}-o${octave}`) * amplitude;
+    value +=
+      sampleValueNoise(noiseAt, x * frequency, y * frequency, `${salt}-o${octave}`) * amplitude;
     amplitudeSum += amplitude;
     amplitude *= 0.5;
     frequency *= 2;
@@ -86,8 +82,20 @@ export const sampleIsotropicField = (
   };
   const fieldX = (q + r / 2) * AXIAL_TO_WORLD_X * frequency;
   const fieldY = r * AXIAL_TO_WORLD_Y * frequency;
-  const warpX = sampleFractalNoise(noiseAt, fieldX + 17.13, fieldY - 3.71, `${salt}-warp-x`, warpOctaves);
-  const warpY = sampleFractalNoise(noiseAt, fieldX - 9.41, fieldY + 5.29, `${salt}-warp-y`, warpOctaves);
+  const warpX = sampleFractalNoise(
+    noiseAt,
+    fieldX + 17.13,
+    fieldY - 3.71,
+    `${salt}-warp-x`,
+    warpOctaves,
+  );
+  const warpY = sampleFractalNoise(
+    noiseAt,
+    fieldX - 9.41,
+    fieldY + 5.29,
+    `${salt}-warp-y`,
+    warpOctaves,
+  );
   const warpedX = fieldX + (warpX - 0.5) * warpAmount;
   const warpedY = fieldY + (warpY - 0.5) * warpAmount;
 
@@ -99,7 +107,13 @@ export const sampleIsotropicField = (
     const rotatedX = warpedX * cosAngle - warpedY * sinAngle;
     const rotatedY = warpedX * sinAngle + warpedY * cosAngle;
 
-    rotatedBlend += sampleFractalNoise(noiseAt, rotatedX, rotatedY, `${salt}-rot-${angleIndex}`, octaves);
+    rotatedBlend += sampleFractalNoise(
+      noiseAt,
+      rotatedX,
+      rotatedY,
+      `${salt}-rot-${angleIndex}`,
+      octaves,
+    );
   }
 
   return normalizeIsotropicBlend(rotatedBlend / SAMPLE_ANGLES.length, contrast);

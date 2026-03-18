@@ -45,50 +45,61 @@ Both built-in generators are thin script wrappers:
 Each wrapper:
 
 1. Validates params.
-2. Builds script-specific pipeline config.
-3. Calls `runGeneratorPipeline(...)`.
+2. Builds script-specific pipeline profile.
+3. Calls `runMapgenPipeline(...)`.
 4. Returns generated tiles.
 
 This keeps script behavior customizable without changing registry/contracts.
 
+The pipeline internals are split by role:
+
+- `src/game/mapgen/pipeline/execute.ts`: ordered orchestration.
+- `src/game/mapgen/pipeline/stages/`: real generation stages.
+- `src/game/mapgen/pipeline/support/`: deterministic helpers and sampling primitives.
+- `src/game/mapgen/analysis/metrics.ts`: shared quality metrics used by diagnostics, repro, and tests.
+
 ## 3. Algorithm Flow (Current)
 
-Implemented in `src/game/mapgen/pipeline/run.ts`.
+Implemented in `src/game/mapgen/pipeline/execute.ts`.
 
-## Step 1: Grid and Subseed Setup
+## Step 1: Bootstrap
 
 - Build `MapGrid` from deterministic coordinates.
 - Create named subseeds (`macro`, `elevation`, `detail`, `climate`, `terrain-features`) for stage isolation.
+- Resolve clamped land ratio and deterministic primary-region target.
 
-## Step 2: Macro Structure
+## Step 2: Macro Regions
 
-1. Generate Poisson seeds (`poisson.ts`).
+1. Generate Poisson seeds (`pipeline/support/poisson.ts`).
 2. Ensure minimum seed coverage for small or sparse samples.
-3. Assign Voronoi region per tile (`voronoi.ts`).
-4. Build macro land mask (`macro-mask.ts`), including:
-   - region scoring (size, centrality, noise)
-   - overshoot-aware primary region selection
-   - secondary fill if map is still below macro target
-   - deterministic fragmentation/growth pass
-   - final target-ratio rebalance
+3. Assign Voronoi region per tile (`pipeline/support/voronoi.ts`).
+
+## Step 3: Land Mask
+
+- Build macro land mask (`pipeline/stages/03-land-mask.ts`), including:
+  - region scoring (size, centrality, noise)
+  - overshoot-aware primary region selection
+  - secondary fill if map is still below macro target
+  - deterministic fragmentation/growth pass
+  - final target-ratio rebalance
 
 Important anti-artifact rule: primary-region selection is intentionally kept close to target land ratio so final rebalance remains a correction, not a global reshape.
 
-## Step 3: Tectonic Elevation
+## Step 4: Tectonic Elevation
 
 - Assign pseudo-plate vectors per region.
 - Detect boundary convergence/divergence through relative plate motion.
-- Produce normalized elevation + boundary intensity (`tectonics.ts`).
+- Produce normalized elevation + boundary intensity (`pipeline/stages/04-tectonics.ts`).
 
-## Step 4: Detail Noise
+## Step 5: Detail Noise
 
 - Apply rotated multi-field value-noise blending and domain warp.
-- Perturb elevation and optionally mutate coastlines (`detail-noise.ts`).
-- Rebalance land mask back to configured target ratio (`macro-mask.ts` helper).
+- Perturb elevation and optionally mutate coastlines (`pipeline/stages/05-detail-noise.ts`).
+- Rebalance land mask back to configured target ratio (`pipeline/support/land-mask.ts` helper).
 
-## Step 5: Terrain Classification
+## Step 6: Terrain Classification
 
-- Convert land/water masks and elevation into layered biome + elevation output (`terrain-classify.ts`):
+- Convert land/water masks and elevation into layered biome + elevation output (`pipeline/stages/06-terrain-classification.ts`):
   - Tile terrain (biome/water): `ocean`, `deep_sea`, `coastal_sea`, `grassland`, `plains`, `desert`, `tundra`
   - Elevation: `underwater`, `flat`, `hill`, `mountain`
 - Climate channels (`heat`, `moisture`, `fertility`) should be sampled with deterministic rotated/isotropic multi-sample blending instead of single-point coordinate hash lookups, to prevent straight-line biome striping artifacts.
@@ -96,28 +107,33 @@ Important anti-artifact rule: primary-region selection is intentionally kept clo
 
 This separation allows combinations like plains hills or tundra mountains without encoding every combination as a terrain id.
 
-## Step 6: Terrain Feature Placement
+## Step 7: Elevation Spray
 
 - Apply an optional post-generation elevation spray pass after terrain classification and before terrain features.
 - This pass uses a deterministic subseed stream to add sparse single-tile hill/mountain upgrades on land only.
 - Water tiles remain `underwater`; the spray stage must never create ocean hills or mountains.
 
-## Step 7: Terrain Feature Placement
+## Step 8: Terrain Feature Placement
 
-- Apply a dedicated terrain-feature pass (`terrain-features.ts`) after biome/elevation classification.
+- Apply a dedicated terrain-feature pass (`pipeline/stages/08-terrain-features.ts`) after biome/elevation classification.
 - Feature assignment is deterministic and stage-isolated via the `terrain-features` subseed stream.
 - This pass assigns `terrainFeatureId` (for example `forest`, `jungle`, `bamboo_grove`, `reeds`) without mutating macro landmass generation.
 - Terrain-feature density, presence, climate weighting, and feature-type selection should sample deterministic isotropic fields instead of raw `(q, r)` hash noise so feature cover does not align into axial stripes.
 
-## Step 8: Quality Metrics
+## Step 9: Finalize
 
-- Compute map quality stats (`metrics.ts`):
+- Compute map quality stats (`src/game/mapgen/analysis/metrics.ts`):
   - land ratio
   - landmass count
   - largest landmass share
   - coastline complexity
   - coastline directionality score
-- Additional anti-streak helper: land corridor metric (single-width linear land streak detection).
+- Assemble pipeline debug stats:
+  - seed count
+  - region count
+  - target land ratio
+  - actual land ratio
+- Additional anti-streak helper remains in metrics: land corridor metric (single-width linear land streak detection).
 
 ## 4. Built-In Script Parameter Models
 
@@ -171,6 +187,7 @@ Current automated coverage includes:
 - variation across seeds
 - land ratio bounds
 - deterministic terrain-feature assignment
+- explicit pipeline stage-order coverage
 - script profile differentiation (`continents` vs `archipelago`)
 - diagnostics harness aggregation
 - fixture replay checks
@@ -187,19 +204,29 @@ All tests run with Vitest (`npm test`).
 - Generators:
   - `src/game/mapgen/generators/continents.ts`
   - `src/game/mapgen/generators/archipelago.ts`
-- Pipeline:
-  - `src/game/mapgen/pipeline/run.ts`
-  - `src/game/mapgen/pipeline/grid.ts`
-  - `src/game/mapgen/pipeline/poisson.ts`
-  - `src/game/mapgen/pipeline/voronoi.ts`
-  - `src/game/mapgen/pipeline/macro-mask.ts`
-  - `src/game/mapgen/pipeline/tectonics.ts`
-  - `src/game/mapgen/pipeline/detail-noise.ts`
-  - `src/game/mapgen/pipeline/terrain-classify.ts`
-  - `src/game/mapgen/pipeline/elevation-spray.ts`
-  - `src/game/mapgen/pipeline/terrain-features.ts`
-  - `src/game/mapgen/pipeline/metrics.ts`
-- Diagnostics and repro:
+- Pipeline orchestration:
+  - `src/game/mapgen/pipeline/contracts.ts`
+  - `src/game/mapgen/pipeline/execute.ts`
+- Pipeline stages:
+  - `src/game/mapgen/pipeline/stages/01-bootstrap.ts`
+  - `src/game/mapgen/pipeline/stages/02-macro-regions.ts`
+  - `src/game/mapgen/pipeline/stages/03-land-mask.ts`
+  - `src/game/mapgen/pipeline/stages/04-tectonics.ts`
+  - `src/game/mapgen/pipeline/stages/05-detail-noise.ts`
+  - `src/game/mapgen/pipeline/stages/06-terrain-classification.ts`
+  - `src/game/mapgen/pipeline/stages/07-elevation-spray.ts`
+  - `src/game/mapgen/pipeline/stages/08-terrain-features.ts`
+  - `src/game/mapgen/pipeline/stages/09-finalize.ts`
+- Pipeline support:
+  - `src/game/mapgen/pipeline/support/grid.ts`
+  - `src/game/mapgen/pipeline/support/poisson.ts`
+  - `src/game/mapgen/pipeline/support/voronoi.ts`
+  - `src/game/mapgen/pipeline/support/subseeds.ts`
+  - `src/game/mapgen/pipeline/support/fields.ts`
+  - `src/game/mapgen/pipeline/support/isotropic-noise.ts`
+  - `src/game/mapgen/pipeline/support/land-mask.ts`
+- Analysis, diagnostics, and repro:
+  - `src/game/mapgen/analysis/metrics.ts`
   - `src/game/mapgen/diagnostics.ts`
   - `src/game/mapgen/repro.ts`
   - `scripts/mapgen-diagnostics.ts`

@@ -1,16 +1,16 @@
-﻿import { createRectCoords } from '~/game/mapgen/helpers';
-import { createSeededRandom } from '~/game/mapgen/random';
-import { applyDetailPass } from '~/game/mapgen/pipeline/detail-noise';
-import { applyElevationSpray } from '~/game/mapgen/pipeline/elevation-spray';
-import { createMapGrid } from '~/game/mapgen/pipeline/grid';
-import { buildMacroMask } from '~/game/mapgen/pipeline/macro-mask';
-import { generatePoissonSeeds } from '~/game/mapgen/pipeline/poisson';
-import { applyTectonicPass } from '~/game/mapgen/pipeline/tectonics';
-import { classifyTerrain } from '~/game/mapgen/pipeline/terrain-classify';
-import { assignTerrainFeatures } from '~/game/mapgen/pipeline/terrain-features';
-import { assignVoronoiRegions } from '~/game/mapgen/pipeline/voronoi';
-import { hashNoiseAt } from '~/game/mapgen/random';
-import { canPlaceTerrainFeatureOnTerrain } from '~/base/terrainFeatures';
+import { createRectCoords } from '/game/mapgen/helpers';
+import { createSeededRandom } from '/game/mapgen/random';
+import { applyDetailPass } from '/game/mapgen/pipeline/stages/05-detail-noise';
+import { applyElevationSpray } from '/game/mapgen/pipeline/stages/07-elevation-spray';
+import { createMapGrid } from '/game/mapgen/pipeline/support/grid';
+import { buildMacroLandMask } from '/game/mapgen/pipeline/stages/03-land-mask';
+import { generatePoissonSeeds } from '/game/mapgen/pipeline/support/poisson';
+import { applyTectonicPass } from '/game/mapgen/pipeline/stages/04-tectonics';
+import { classifyTerrain } from '/game/mapgen/pipeline/stages/06-terrain-classification';
+import { assignTerrainFeatures } from '/game/mapgen/pipeline/stages/08-terrain-features';
+import { assignVoronoiRegions } from '/game/mapgen/pipeline/support/voronoi';
+import { hashNoiseAt } from '/game/mapgen/random';
+import { canPlaceTerrainFeatureOnTerrain } from '/base/terrainFeatures';
 
 const ALLOWED_TERRAINS = new Set([
   'ocean',
@@ -48,7 +48,7 @@ describe('mapgen pipeline stages', () => {
     });
     const voronoi = assignVoronoiRegions(grid, seeds);
 
-    const result = buildMacroMask(grid, voronoi, {
+    const result = buildMacroLandMask(grid, voronoi, {
       landRatio: 0.34,
       primaryRegionTarget: 4,
       largeMassBias: 0.7,
@@ -73,7 +73,7 @@ describe('mapgen pipeline stages', () => {
       maxPoints: 50,
     });
     const voronoi = assignVoronoiRegions(grid, seeds);
-    const macroMask = buildMacroMask(grid, voronoi, {
+    const macroMask = buildMacroLandMask(grid, voronoi, {
       landRatio: 0.31,
       primaryRegionTarget: 3,
       largeMassBias: 0.75,
@@ -125,7 +125,7 @@ describe('mapgen pipeline stages', () => {
       maxPoints: 30,
     });
     const voronoi = assignVoronoiRegions(grid, seeds);
-    const macroMask = buildMacroMask(grid, voronoi, {
+    const macroMask = buildMacroLandMask(grid, voronoi, {
       landRatio: 0.33,
       primaryRegionTarget: 3,
       largeMassBias: 0.7,
@@ -173,7 +173,7 @@ describe('mapgen pipeline stages', () => {
       maxPoints: 34,
     });
     const voronoi = assignVoronoiRegions(grid, seeds);
-    const macroMask = buildMacroMask(grid, voronoi, {
+    const macroMask = buildMacroLandMask(grid, voronoi, {
       landRatio: 0.34,
       primaryRegionTarget: 3,
       largeMassBias: 0.68,

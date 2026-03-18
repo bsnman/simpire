@@ -1,13 +1,13 @@
-import type { GameMap, MapTile } from '~/types/map';
+import type { GameMap, MapTile } from '/types/map';
 
-import type { ValidationResult, MapGenerationRequest } from '~/game/mapgen/contracts';
-import { createRectCoords } from '~/game/mapgen/helpers';
-import { createMapGrid } from '~/game/mapgen/pipeline/grid';
+import type { ValidationResult, MapGenerationRequest } from '/game/mapgen/contracts';
+import { createRectCoords } from '/game/mapgen/helpers';
+import { createMapGrid } from '/game/mapgen/pipeline/support/grid';
 import {
   buildLandMaskFromTiles,
   calculateMapQualityMetrics,
   type MapQualityMetrics,
-} from '~/game/mapgen/pipeline/metrics';
+} from '/game/mapgen/analysis/metrics';
 
 const FNV_OFFSET_BASIS = 2_166_136_261;
 const FNV_PRIME = 16_777_619;

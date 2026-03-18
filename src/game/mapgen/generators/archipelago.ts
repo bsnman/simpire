@@ -1,10 +1,11 @@
-import { clamp } from '~/game/mapgen/helpers';
+import { clamp } from '/game/mapgen/helpers';
 import {
   type MapGeneratorContext,
   type MapGeneratorDefinition,
   type ValidationResult,
-} from '~/game/mapgen/contracts';
-import { runGeneratorPipeline } from '~/game/mapgen/pipeline/run';
+} from '/game/mapgen/contracts';
+import { runMapgenPipeline } from '/game/mapgen/pipeline/execute';
+import type { MapgenPipelineProfile } from '/game/mapgen/pipeline/contracts';
 
 export const ARCHIPELAGO_GENERATOR_ID = 'archipelago';
 
@@ -265,10 +266,10 @@ const validateArchipelagoParams = (params: unknown): ValidationResult<Archipelag
   };
 };
 
-const buildArchipelagoPipelineConfig = (
+const buildArchipelagoPipelineProfile = (
   context: MapGeneratorContext,
   params: ArchipelagoParams,
-) => {
+): MapgenPipelineProfile => {
   const mapArea = context.width * context.height;
   const clampedLandmassSize = clamp(params.landmassSize, 0, 1);
   const averageLandmassCount = (params.landmassCountMin + params.landmassCountMax) / 2;
@@ -393,5 +394,5 @@ export const archipelagoMapGenerator: MapGeneratorDefinition<ArchipelagoParams> 
   ],
   validateParams: validateArchipelagoParams,
   generateTiles: (context, params) =>
-    runGeneratorPipeline(context, buildArchipelagoPipelineConfig(context, params)).tiles,
+    runMapgenPipeline(context, buildArchipelagoPipelineProfile(context, params)).tiles,
 };

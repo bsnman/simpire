@@ -1,19 +1,19 @@
-import { generateMap } from '~/game/mapgen';
+import { generateMap } from '/game/mapgen';
 import {
   calculateMapQualityMetricsForMap,
   createMapDigest,
   parseMapgenReplayInput,
   stringifyMapgenReproPayload,
-} from '~/game/mapgen/repro';
-import { createRectCoords } from '~/game/mapgen/helpers';
-import { createMapGrid } from '~/game/mapgen/pipeline/grid';
+} from '/game/mapgen/repro';
+import { createRectCoords } from '/game/mapgen/helpers';
+import { createMapGrid } from '/game/mapgen/pipeline/support/grid';
 import {
   buildLandMaskFromTiles,
   calculateLandCorridorMetrics,
-} from '~/game/mapgen/pipeline/metrics';
-import { archipelagoDiagonalReproFixture } from '~/game/mapgen/fixtures/archipelagoDiagonalRepro';
-import type { MapTile } from '~/types/map';
-import { toHexKey } from '~/types/hex';
+} from '/game/mapgen/analysis/metrics';
+import { archipelagoDiagonalReproFixture } from '/game/mapgen/fixtures/archipelagoDiagonalRepro';
+import type { MapTile } from '/types/map';
+import { toHexKey } from '/types/hex';
 
 const archipelagoHillBalanceRepro = {
   request: {

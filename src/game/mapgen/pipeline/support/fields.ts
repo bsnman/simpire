@@ -1,4 +1,4 @@
-﻿export const clamp01 = (value: number): number => Math.max(0, Math.min(1, value));
+export const clamp01 = (value: number): number => Math.max(0, Math.min(1, value));
 
 export const createScalarField = (length: number, initialValue = 0): Float64Array => {
   if (!Number.isInteger(length) || length < 0) {

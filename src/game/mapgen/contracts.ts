@@ -1,7 +1,7 @@
-import type { HexCoord, HexLayout } from '~/types/hex';
-import type { MapTile } from '~/types/map';
+import type { HexCoord, HexLayout } from '/types/hex';
+import type { MapTile } from '/types/map';
 
-import type { SeededRandom } from '~/game/mapgen/random';
+import type { SeededRandom } from '/game/mapgen/random';
 
 export type MapGenerationRequest = {
   algorithmId: string;

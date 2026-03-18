@@ -1,8 +1,8 @@
-import { createRectCoords } from '~/game/mapgen/helpers';
-import { createMapGrid } from '~/game/mapgen/pipeline/grid';
-import { applyElevationSpray } from '~/game/mapgen/pipeline/elevation-spray';
-import { createSeededRandom } from '~/game/mapgen/random';
-import type { MapTile } from '~/types/map';
+import { createRectCoords } from '/game/mapgen/helpers';
+import { createMapGrid } from '/game/mapgen/pipeline/support/grid';
+import { applyElevationSpray } from '/game/mapgen/pipeline/stages/07-elevation-spray';
+import { createSeededRandom } from '/game/mapgen/random';
+import type { MapTile } from '/types/map';
 
 const createLandTiles = (
   width: number,

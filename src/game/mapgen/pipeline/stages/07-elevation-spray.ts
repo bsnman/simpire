@@ -1,7 +1,8 @@
-import { clamp } from '~/game/mapgen/helpers';
-import { buildDeterministicShuffle, type MapGrid } from '~/game/mapgen/pipeline/grid';
-import type { SeededRandom } from '~/game/mapgen/random';
-import type { MapTile } from '~/types/map';
+import { clamp } from '/game/mapgen/helpers';
+import type { MapgenPipelineStage, MapgenPipelineState } from '/game/mapgen/pipeline/contracts';
+import { buildDeterministicShuffle, type MapGrid } from '/game/mapgen/pipeline/support/grid';
+import type { SeededRandom } from '/game/mapgen/random';
+import type { MapTile } from '/types/map';
 
 export type ElevationSprayConfig = {
   density: number;
@@ -61,4 +62,31 @@ export const applyElevationSpray = (
   }
 
   return nextTiles;
+};
+
+const requireState = (
+  state: MapgenPipelineState,
+): MapgenPipelineState &
+  Required<Pick<MapgenPipelineState, 'grid' | 'terrainClassification' | 'subseeds'>> => {
+  if (!state.grid || !state.terrainClassification || !state.subseeds) {
+    throw new Error('Elevation spray stage requires terrain classification output.');
+  }
+
+  return state as MapgenPipelineState &
+    Required<Pick<MapgenPipelineState, 'grid' | 'terrainClassification' | 'subseeds'>>;
+};
+
+export const elevationSprayStage: MapgenPipelineStage = {
+  id: '07-elevation-spray',
+  run: (state: MapgenPipelineState): MapgenPipelineState => {
+    const nextState = requireState(state);
+
+    return {
+      ...nextState,
+      sprayedTiles: applyElevationSpray(nextState.grid, nextState.terrainClassification.tiles, {
+        density: nextState.profile.elevationSprayDensity,
+        random: nextState.subseeds.random('elevation-spray'),
+      }),
+    };
+  },
 };

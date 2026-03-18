@@ -1,14 +1,14 @@
-﻿import {
+import {
   ARCHIPELAGO_GENERATOR_ID,
   CONTINENTS_GENERATOR_ID,
   generateMap,
   getMapGenerator,
   listMapGenerators,
-} from '~/game/mapgen';
-import { createRectCoords } from '~/game/mapgen/helpers';
-import { createMapGrid } from '~/game/mapgen/pipeline/grid';
-import { buildLandMaskFromTiles, calculateMapQualityMetrics } from '~/game/mapgen/pipeline/metrics';
-import type { MapTile } from '~/types/map';
+} from '/game/mapgen';
+import { createRectCoords } from '/game/mapgen/helpers';
+import { createMapGrid } from '/game/mapgen/pipeline/support/grid';
+import { buildLandMaskFromTiles, calculateMapQualityMetrics } from '/game/mapgen/analysis/metrics';
+import type { MapTile } from '/types/map';
 
 const WIDTH = 44;
 const HEIGHT = 30;

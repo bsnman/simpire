@@ -2,9 +2,10 @@ import {
   type MapGeneratorDefinition,
   type ValidationResult,
   type MapGeneratorContext,
-} from '~/game/mapgen/contracts';
-import { clamp } from '~/game/mapgen/helpers';
-import { runGeneratorPipeline } from '~/game/mapgen/pipeline/run';
+} from '/game/mapgen/contracts';
+import { clamp } from '/game/mapgen/helpers';
+import { runMapgenPipeline } from '/game/mapgen/pipeline/execute';
+import type { MapgenPipelineProfile } from '/game/mapgen/pipeline/contracts';
 
 export const CONTINENTS_GENERATOR_ID = 'continents';
 
@@ -240,7 +241,10 @@ const validateContinentsParams = (params: unknown): ValidationResult<ContinentsP
   };
 };
 
-const buildContinentsPipelineConfig = (context: MapGeneratorContext, params: ContinentsParams) => {
+const buildContinentsPipelineProfile = (
+  context: MapGeneratorContext,
+  params: ContinentsParams,
+): MapgenPipelineProfile => {
   const mapArea = context.width * context.height;
   const averageLandmassCount = (params.landmassCountMin + params.landmassCountMax) / 2;
   const clampedLandmassSize = clamp(params.landmassSize, 0, 1);
@@ -368,5 +372,5 @@ export const continentsMapGenerator: MapGeneratorDefinition<ContinentsParams> = 
   ],
   validateParams: validateContinentsParams,
   generateTiles: (context, params) =>
-    runGeneratorPipeline(context, buildContinentsPipelineConfig(context, params)).tiles,
+    runMapgenPipeline(context, buildContinentsPipelineProfile(context, params)).tiles,
 };

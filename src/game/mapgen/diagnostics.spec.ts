@@ -1,5 +1,5 @@
-﻿import { runMapgenDiagnostics, type MapgenDiagnosticsScenario } from '~/game/mapgen/diagnostics';
-import { ARCHIPELAGO_GENERATOR_ID, CONTINENTS_GENERATOR_ID } from '~/game/mapgen';
+import { runMapgenDiagnostics, type MapgenDiagnosticsScenario } from '/game/mapgen/diagnostics';
+import { ARCHIPELAGO_GENERATOR_ID, CONTINENTS_GENERATOR_ID } from '/game/mapgen';
 
 const buildScenario = (
   algorithmId: string,

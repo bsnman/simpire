@@ -1,14 +1,14 @@
-import type { GameMap, MapTile } from '~/types/map';
-import { toHexKey } from '~/types/hex';
+import type { GameMap, MapTile } from '/types/map';
+import { toHexKey } from '/types/hex';
 
 import type {
   MapGenerationRequest,
   MapGeneratorContext,
   MapGeneratorDefinition,
   MapGeneratorRegistrationOptions,
-} from '~/game/mapgen/contracts';
-import { createRectCoords } from '~/game/mapgen/helpers';
-import { hashNoiseAt, createSeededRandom } from '~/game/mapgen/random';
+} from '/game/mapgen/contracts';
+import { createRectCoords } from '/game/mapgen/helpers';
+import { hashNoiseAt, createSeededRandom } from '/game/mapgen/random';
 
 const DEFAULT_LAYOUT = 'pointy' as const;
 const DEFAULT_TILE_SIZE = 64;

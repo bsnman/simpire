@@ -1,4 +1,4 @@
-﻿import type { SeededRandom } from '~/game/mapgen/random';
+import type { SeededRandom } from '/game/mapgen/random';
 
 export type PoissonSeedPoint = {
   id: number;

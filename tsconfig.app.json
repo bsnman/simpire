@@ -5,7 +5,13 @@
     "types": ["vite/client", "vitest/globals"],
     "baseUrl": ".",
     "paths": {
-      "~/*": ["src/*"]
+      "~/*": ["src/*"],
+      "/base/*": ["src/base/*"],
+      "/components/*": ["src/components/*"],
+      "/game/*": ["src/game/*"],
+      "/stores/*": ["src/stores/*"],
+      "/types/*": ["src/types/*"],
+      "/views/*": ["src/views/*"]
     },
 
     /* Linting */

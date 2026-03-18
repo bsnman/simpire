@@ -1,5 +1,5 @@
-﻿import type { MapGeneratorContext } from '~/game/mapgen/contracts';
-import { createSeededRandom, hashNoiseAt, type SeededRandom } from '~/game/mapgen/random';
+import type { MapGeneratorContext } from '/game/mapgen/contracts';
+import { createSeededRandom, hashNoiseAt, type SeededRandom } from '/game/mapgen/random';
 
 export const deriveSubseed = (seedHash: string, streamName: string): string =>
   `${seedHash}::${streamName}`;

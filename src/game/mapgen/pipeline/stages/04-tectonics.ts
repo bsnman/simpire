@@ -1,25 +1,19 @@
-﻿import { clamp } from '~/game/mapgen/helpers';
-import { normalizeField } from '~/game/mapgen/pipeline/fields';
-import type { MapGrid } from '~/game/mapgen/pipeline/grid';
-import { isLandAt } from '~/game/mapgen/pipeline/grid';
-import type { VoronoiResult } from '~/game/mapgen/pipeline/voronoi';
-import type { SeededRandom } from '~/game/mapgen/random';
-
-export type PlateVector = {
-  x: number;
-  y: number;
-};
+import { clamp } from '/game/mapgen/helpers';
+import type {
+  MapgenPipelineStage,
+  MapgenPipelineState,
+  PlateVector,
+  TectonicState,
+} from '/game/mapgen/pipeline/contracts';
+import { normalizeField } from '/game/mapgen/pipeline/support/fields';
+import { isLandAt, type MapGrid } from '/game/mapgen/pipeline/support/grid';
+import type { VoronoiResult } from '/game/mapgen/pipeline/support/voronoi';
+import type { SeededRandom } from '/game/mapgen/random';
 
 export type TectonicPassConfig = {
   strength: number;
   random: SeededRandom;
   noiseAt: (q: number, r: number, salt?: string) => number;
-};
-
-export type TectonicPassResult = {
-  elevation: Float64Array;
-  boundaryIntensity: Float64Array;
-  plateVectors: PlateVector[];
 };
 
 const assignPlateVectors = (regionCount: number, random: SeededRandom): PlateVector[] => {
@@ -43,7 +37,7 @@ export const applyTectonicPass = (
   voronoi: VoronoiResult,
   landMask: ArrayLike<number>,
   config: TectonicPassConfig,
-): TectonicPassResult => {
+): TectonicState => {
   if (!grid.tiles.length) {
     return {
       elevation: new Float64Array(),
@@ -150,4 +144,37 @@ export const applyTectonicPass = (
     boundaryIntensity: normalizedBoundary,
     plateVectors,
   };
+};
+
+const requireState = (
+  state: MapgenPipelineState,
+): MapgenPipelineState &
+  Required<Pick<MapgenPipelineState, 'grid' | 'voronoi' | 'macroLandMask' | 'subseeds'>> => {
+  if (!state.grid || !state.voronoi || !state.macroLandMask || !state.subseeds) {
+    throw new Error('Tectonics stage requires land mask and macro region outputs.');
+  }
+
+  return state as MapgenPipelineState &
+    Required<Pick<MapgenPipelineState, 'grid' | 'voronoi' | 'macroLandMask' | 'subseeds'>>;
+};
+
+export const tectonicsStage: MapgenPipelineStage = {
+  id: '04-tectonics',
+  run: (state: MapgenPipelineState): MapgenPipelineState => {
+    const nextState = requireState(state);
+
+    return {
+      ...nextState,
+      tectonics: applyTectonicPass(
+        nextState.grid,
+        nextState.voronoi,
+        nextState.macroLandMask.landMask,
+        {
+          strength: nextState.profile.tectonicStrength,
+          random: nextState.subseeds.random('elevation'),
+          noiseAt: (q, r, salt) => nextState.subseeds.noiseAt('elevation', q, r, salt),
+        },
+      ),
+    };
+  },
 };

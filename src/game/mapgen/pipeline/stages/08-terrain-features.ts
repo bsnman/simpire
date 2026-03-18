@@ -1,10 +1,10 @@
-import { canPlaceTerrainFeatureOnTerrain, type TerrainFeatureType } from '~/base/terrainFeatures';
-import type { TileType } from '~/base/tiles';
-import { clamp } from '~/game/mapgen/helpers';
-import type { MapTile } from '~/types/map';
-
-import type { MapGrid } from '~/game/mapgen/pipeline/grid';
-import { sampleIsotropicField } from '~/game/mapgen/pipeline/isotropic-noise';
+import { canPlaceTerrainFeatureOnTerrain, type TerrainFeatureType } from '/base/terrainFeatures';
+import type { TileType } from '/base/tiles';
+import { clamp } from '/game/mapgen/helpers';
+import type { MapgenPipelineStage, MapgenPipelineState } from '/game/mapgen/pipeline/contracts';
+import type { MapGrid } from '/game/mapgen/pipeline/support/grid';
+import { sampleIsotropicField } from '/game/mapgen/pipeline/support/isotropic-noise';
+import type { MapTile } from '/types/map';
 
 export type TerrainFeatureGenerationConfig = {
   noiseAt: (q: number, r: number, salt?: string) => number;
@@ -219,4 +219,30 @@ export const assignTerrainFeatures = (
       terrainFeatureId: selectedFeature,
     };
   });
+};
+
+const requireState = (
+  state: MapgenPipelineState,
+): MapgenPipelineState &
+  Required<Pick<MapgenPipelineState, 'grid' | 'sprayedTiles' | 'subseeds'>> => {
+  if (!state.grid || !state.sprayedTiles || !state.subseeds) {
+    throw new Error('Terrain feature stage requires sprayed tile output.');
+  }
+
+  return state as MapgenPipelineState &
+    Required<Pick<MapgenPipelineState, 'grid' | 'sprayedTiles' | 'subseeds'>>;
+};
+
+export const terrainFeaturesStage: MapgenPipelineStage = {
+  id: '08-terrain-features',
+  run: (state: MapgenPipelineState): MapgenPipelineState => {
+    const nextState = requireState(state);
+
+    return {
+      ...nextState,
+      tiles: assignTerrainFeatures(nextState.grid, nextState.sprayedTiles, {
+        noiseAt: (q, r, salt) => nextState.subseeds.noiseAt('terrain-features', q, r, salt),
+      }),
+    };
+  },
 };

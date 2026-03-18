@@ -1,13 +1,18 @@
-﻿import { clamp } from '~/game/mapgen/helpers';
-import { clamp01 } from '~/game/mapgen/pipeline/fields';
+import { clamp } from '/game/mapgen/helpers';
+import type {
+  DetailPassState,
+  MapgenPipelineStage,
+  MapgenPipelineState,
+} from '/game/mapgen/pipeline/contracts';
+import { clamp01 } from '/game/mapgen/pipeline/support/fields';
 import {
   buildDeterministicShuffle,
   countLandNeighbors,
   isLandAt,
   type MapGrid,
-} from '~/game/mapgen/pipeline/grid';
-import { rebalanceLandMaskToTarget } from '~/game/mapgen/pipeline/macro-mask';
-import type { SeededRandom } from '~/game/mapgen/random';
+} from '/game/mapgen/pipeline/support/grid';
+import { rebalanceLandMaskToTarget } from '/game/mapgen/pipeline/support/land-mask';
+import type { SeededRandom } from '/game/mapgen/random';
 
 export type DetailPassConfig = {
   coastlineRoughness: number;
@@ -15,12 +20,6 @@ export type DetailPassConfig = {
   random: SeededRandom;
   noiseAt: (q: number, r: number, salt?: string) => number;
   regionScoreByTile?: ArrayLike<number>;
-};
-
-export type DetailPassResult = {
-  landMask: Uint8Array;
-  elevation: Float64Array;
-  coastlineMutations: number;
 };
 
 const lerp = (start: number, end: number, amount: number): number => start + (end - start) * amount;
@@ -79,7 +78,7 @@ export const applyDetailPass = (
   startingLandMask: ArrayLike<number>,
   startingElevation: ArrayLike<number>,
   config: DetailPassConfig,
-): DetailPassResult => {
+): DetailPassState => {
   const landMask = Uint8Array.from(startingLandMask);
   const elevation = Float64Array.from(startingElevation);
 
@@ -170,4 +169,55 @@ export const applyDetailPass = (
     elevation,
     coastlineMutations,
   };
+};
+
+const requireState = (
+  state: MapgenPipelineState,
+): MapgenPipelineState &
+  Required<
+    Pick<
+      MapgenPipelineState,
+      'grid' | 'macroLandMask' | 'tectonics' | 'subseeds' | 'clampedLandRatio'
+    >
+  > => {
+  if (
+    !state.grid ||
+    !state.macroLandMask ||
+    !state.tectonics ||
+    !state.subseeds ||
+    typeof state.clampedLandRatio !== 'number'
+  ) {
+    throw new Error('Detail stage requires tectonics and land mask outputs.');
+  }
+
+  return state as MapgenPipelineState &
+    Required<
+      Pick<
+        MapgenPipelineState,
+        'grid' | 'macroLandMask' | 'tectonics' | 'subseeds' | 'clampedLandRatio'
+      >
+    >;
+};
+
+export const detailNoiseStage: MapgenPipelineStage = {
+  id: '05-detail-noise',
+  run: (state: MapgenPipelineState): MapgenPipelineState => {
+    const nextState = requireState(state);
+
+    return {
+      ...nextState,
+      detailPass: applyDetailPass(
+        nextState.grid,
+        nextState.macroLandMask.landMask,
+        nextState.tectonics.elevation,
+        {
+          coastlineRoughness: nextState.profile.coastlineRoughness,
+          targetLandRatio: nextState.clampedLandRatio,
+          random: nextState.subseeds.random('detail'),
+          noiseAt: (q, r, salt) => nextState.subseeds.noiseAt('detail', q, r, salt),
+          regionScoreByTile: nextState.macroLandMask.regionScoreByTile,
+        },
+      ),
+    };
+  },
 };

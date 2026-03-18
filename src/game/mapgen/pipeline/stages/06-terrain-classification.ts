@@ -1,21 +1,19 @@
-import type { ElevationType } from '~/base/elevation';
-import type { TileType } from '~/base/tiles';
-import { clamp } from '~/game/mapgen/helpers';
-import type { MapTile } from '~/types/map';
-
-import { isLandAt, type GridTile, type MapGrid } from '~/game/mapgen/pipeline/grid';
-import { sampleIsotropicField } from '~/game/mapgen/pipeline/isotropic-noise';
+import type { ElevationType } from '/base/elevation';
+import type { TileType } from '/base/tiles';
+import { clamp } from '/game/mapgen/helpers';
+import type {
+  MapgenPipelineStage,
+  MapgenPipelineState,
+  TerrainClassificationState,
+} from '/game/mapgen/pipeline/contracts';
+import { isLandAt, type GridTile, type MapGrid } from '/game/mapgen/pipeline/support/grid';
+import { sampleIsotropicField } from '/game/mapgen/pipeline/support/isotropic-noise';
+import type { MapTile } from '/types/map';
 
 export type TerrainClassificationConfig = {
   shelfWidth: number;
   mountainIntensity: number;
   noiseAt: (q: number, r: number, salt?: string) => number;
-};
-
-export type TerrainClassificationResult = {
-  tiles: MapTile[];
-  distanceToLand: Int32Array;
-  distanceToWater: Int32Array;
 };
 
 const computeDistanceField = (
@@ -153,7 +151,7 @@ export const classifyTerrain = (
   landMask: ArrayLike<number>,
   elevation: ArrayLike<number>,
   config: TerrainClassificationConfig,
-): TerrainClassificationResult => {
+): TerrainClassificationState => {
   const shelfWidth = Math.max(1, Math.round(config.shelfWidth));
   const mountainIntensity = clamp(config.mountainIntensity, 0, 1);
 
@@ -208,4 +206,37 @@ export const classifyTerrain = (
     distanceToLand,
     distanceToWater,
   };
+};
+
+const requireState = (
+  state: MapgenPipelineState,
+): MapgenPipelineState &
+  Required<Pick<MapgenPipelineState, 'grid' | 'detailPass' | 'subseeds'>> => {
+  if (!state.grid || !state.detailPass || !state.subseeds) {
+    throw new Error('Terrain classification stage requires detail pass output.');
+  }
+
+  return state as MapgenPipelineState &
+    Required<Pick<MapgenPipelineState, 'grid' | 'detailPass' | 'subseeds'>>;
+};
+
+export const terrainClassificationStage: MapgenPipelineStage = {
+  id: '06-terrain-classification',
+  run: (state: MapgenPipelineState): MapgenPipelineState => {
+    const nextState = requireState(state);
+
+    return {
+      ...nextState,
+      terrainClassification: classifyTerrain(
+        nextState.grid,
+        nextState.detailPass.landMask,
+        nextState.detailPass.elevation,
+        {
+          shelfWidth: nextState.profile.shelfWidth,
+          mountainIntensity: nextState.profile.mountainIntensity,
+          noiseAt: (q, r, salt) => nextState.subseeds.noiseAt('climate', q, r, salt),
+        },
+      ),
+    };
+  },
 };

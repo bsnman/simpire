@@ -1,11 +1,11 @@
-import { CONTINENTS_GENERATOR_ID, generateMap } from '~/game/mapgen';
+import { CONTINENTS_GENERATOR_ID, generateMap } from '/game/mapgen';
 import {
   buildMapgenReproPayload,
   calculateMapQualityMetricsForMap,
   createMapDigest,
   parseMapgenReplayInput,
   stringifyMapgenReproPayload,
-} from '~/game/mapgen/repro';
+} from '/game/mapgen/repro';
 
 describe('mapgen repro helpers', () => {
   const request = {

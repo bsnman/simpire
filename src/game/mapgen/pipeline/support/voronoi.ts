@@ -1,5 +1,5 @@
-﻿import type { MapGrid } from '~/game/mapgen/pipeline/grid';
-import type { PoissonSeedPoint } from '~/game/mapgen/pipeline/poisson';
+import type { MapGrid } from '/game/mapgen/pipeline/support/grid';
+import type { PoissonSeedPoint } from '/game/mapgen/pipeline/support/poisson';
 
 export type VoronoiRegion = {
   id: number;

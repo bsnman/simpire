@@ -1,8 +1,8 @@
-﻿import type { HexCoord, HexKey } from '~/types/hex';
-import { toHexKey } from '~/types/hex';
+import type { HexCoord, HexKey } from '/types/hex';
+import { toHexKey } from '/types/hex';
 
-import { createRectCoords } from '~/game/mapgen/helpers';
-import type { SeededRandom } from '~/game/mapgen/random';
+import { createRectCoords } from '/game/mapgen/helpers';
+import type { SeededRandom } from '/game/mapgen/random';
 
 export const AXIAL_NEIGHBOR_OFFSETS: readonly HexCoord[] = [
   { q: 1, r: 0 },

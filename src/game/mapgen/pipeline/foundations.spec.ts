@@ -1,16 +1,16 @@
-﻿import { createSeededRandom } from '~/game/mapgen/random';
-import { createRectCoords } from '~/game/mapgen/helpers';
+import { createSeededRandom } from '/game/mapgen/random';
+import { createRectCoords } from '/game/mapgen/helpers';
 import {
   buildDeterministicShuffle,
   createMapGrid,
   type MapGrid,
-} from '~/game/mapgen/pipeline/grid';
+} from '/game/mapgen/pipeline/support/grid';
 import {
   createSubseedRandom,
   createSubseedStreams,
   noiseAtFromSubseed,
-} from '~/game/mapgen/pipeline/subseeds';
-import { sampleIsotropicField } from '~/game/mapgen/pipeline/isotropic-noise';
+} from '/game/mapgen/pipeline/support/subseeds';
+import { sampleIsotropicField } from '/game/mapgen/pipeline/support/isotropic-noise';
 
 const collectNeighborSymmetryViolations = (grid: MapGrid): number => {
   let violations = 0;
@@ -72,7 +72,8 @@ describe('mapgen deterministic foundations', () => {
   });
 
   it('samples isotropic fields deterministically without collapsing to direct axial hashes', () => {
-    const noiseAt = (q: number, r: number, salt?: string) => noiseAtFromSubseed('seed-gamma', 'climate', q, r, salt);
+    const noiseAt = (q: number, r: number, salt?: string) =>
+      noiseAtFromSubseed('seed-gamma', 'climate', q, r, salt);
     const isotropic = sampleIsotropicField(7, 11, noiseAt, 'field-a');
     const isotropicRepeat = sampleIsotropicField(7, 11, noiseAt, 'field-a');
     const direct = noiseAt(7, 11, 'field-a');

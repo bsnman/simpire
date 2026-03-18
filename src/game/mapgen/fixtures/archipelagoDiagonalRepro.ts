@@ -1,4 +1,4 @@
-import type { MapgenReproPayload } from '~/game/mapgen/repro';
+import type { MapgenReproPayload } from '/game/mapgen/repro';
 
 export const archipelagoDiagonalReproFixture: MapgenReproPayload = {
   version: 1,

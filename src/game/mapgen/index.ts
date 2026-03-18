@@ -2,10 +2,10 @@ import type {
   MapGenerationRequest,
   MapGeneratorDefinition,
   MapGeneratorRegistrationOptions,
-} from '~/game/mapgen/contracts';
-import { archipelagoMapGenerator } from '~/game/mapgen/generators/archipelago';
-import { continentsMapGenerator } from '~/game/mapgen/generators/continents';
-import { MapGeneratorRegistry } from '~/game/mapgen/registry';
+} from '/game/mapgen/contracts';
+import { archipelagoMapGenerator } from '/game/mapgen/generators/archipelago';
+import { continentsMapGenerator } from '/game/mapgen/generators/continents';
+import { MapGeneratorRegistry } from '/game/mapgen/registry';
 
 export type {
   MapGenerationRequest,
@@ -14,19 +14,19 @@ export type {
   MapGeneratorNumericParameterDefinition,
   MapGeneratorRegistrationOptions,
   ValidationResult,
-} from '~/game/mapgen/contracts';
-export type { SeededRandom } from '~/game/mapgen/random';
-export { MapGeneratorRegistry } from '~/game/mapgen/registry';
+} from '/game/mapgen/contracts';
+export type { SeededRandom } from '/game/mapgen/random';
+export { MapGeneratorRegistry } from '/game/mapgen/registry';
 export {
   ARCHIPELAGO_GENERATOR_ID,
   archipelagoMapGenerator,
   type ArchipelagoParams,
-} from '~/game/mapgen/generators/archipelago';
+} from '/game/mapgen/generators/archipelago';
 export {
   CONTINENTS_GENERATOR_ID,
   continentsMapGenerator,
   type ContinentsParams,
-} from '~/game/mapgen/generators/continents';
+} from '/game/mapgen/generators/continents';
 
 const mapGeneratorRegistry = new MapGeneratorRegistry();
 

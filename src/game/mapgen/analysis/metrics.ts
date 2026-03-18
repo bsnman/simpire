@@ -1,7 +1,7 @@
-﻿import type { TileType } from '~/base/tiles';
-import type { MapTile } from '~/types/map';
+import type { TileType } from '/base/tiles';
+import type { MapTile } from '/types/map';
 
-import { isLandAt, type MapGrid } from '~/game/mapgen/pipeline/grid';
+import { isLandAt, type MapGrid } from '/game/mapgen/pipeline/support/grid';
 
 const WATER_TERRAINS = new Set<TileType>(['ocean', 'deep_sea', 'coastal_sea']);
 const OPPOSITE_DIRECTION_PAIRS = [
@@ -20,6 +20,17 @@ export type MapQualityMetrics = {
   directionalityScore: number;
   dominantAxis: 0 | 1 | 2;
 };
+
+export const createEmptyMapQualityMetrics = (): MapQualityMetrics => ({
+  landRatio: 0,
+  landTileCount: 0,
+  waterTileCount: 0,
+  landmassCount: 0,
+  largestLandmassShare: 0,
+  coastlineComplexity: 0,
+  directionalityScore: 0,
+  dominantAxis: 0,
+});
 
 export const buildLandMaskFromTiles = (grid: MapGrid, tiles: readonly MapTile[]): Uint8Array => {
   const terrainByKey = new Map<string, TileType>();
@@ -137,6 +148,10 @@ export const calculateMapQualityMetrics = (
   grid: MapGrid,
   landMask: ArrayLike<number>,
 ): MapQualityMetrics => {
+  if (!grid.tiles.length) {
+    return createEmptyMapQualityMetrics();
+  }
+
   const landTileCount = grid.tiles.reduce(
     (count, _, index) => (isLandAt(landMask, index) ? count + 1 : count),
     0,
