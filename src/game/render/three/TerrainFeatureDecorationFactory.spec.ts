@@ -1,4 +1,12 @@
-import { BufferGeometry, Group, InstancedMesh, Matrix4, Mesh, MeshBasicMaterial, Texture } from 'three';
+import {
+  BufferGeometry,
+  Group,
+  InstancedMesh,
+  Matrix4,
+  Mesh,
+  MeshBasicMaterial,
+  Texture,
+} from 'three';
 import { describe, expect, it, vi } from 'vitest';
 
 import { buildMapTileRenderData } from '~/game/render/layers/mapTileRenderData';
@@ -275,9 +283,11 @@ describe('TerrainFeatureDecorationFactory', () => {
     const loader: TerrainFeatureModelLoaderLike = {
       loadAsync: vi.fn(
         (path: string) =>
-          new Promise<Awaited<ReturnType<TerrainFeatureModelLoaderLike['loadAsync']>>>((resolve) => {
-            pendingLoads.set(path, resolve);
-          }),
+          new Promise<Awaited<ReturnType<TerrainFeatureModelLoaderLike['loadAsync']>>>(
+            (resolve) => {
+              pendingLoads.set(path, resolve);
+            },
+          ),
       ),
     };
     const factory = new TerrainFeatureDecorationFactory(loader);

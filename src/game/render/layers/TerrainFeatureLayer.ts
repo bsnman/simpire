@@ -21,8 +21,7 @@ export class TerrainFeatureLayer {
   private decorationRenderToken = 0;
 
   constructor(
-    terrainFeatureDecorationFactory: TerrainFeatureDecorationFactoryLike =
-      new TerrainFeatureDecorationFactory(),
+    terrainFeatureDecorationFactory: TerrainFeatureDecorationFactoryLike = new TerrainFeatureDecorationFactory(),
   ) {
     this.terrainFeatureDecorationFactory = terrainFeatureDecorationFactory;
     this.group.name = MAP_TERRAIN_FEATURE_LAYER_GROUP_NAME;

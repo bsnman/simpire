@@ -191,7 +191,8 @@ describe('MapLayer', () => {
   });
 
   it('disables each visual layer independently without removing other layers', () => {
-    const { mapLayer, terrainDecorationFactory, terrainFeatureDecorationFactory } = createMapLayer();
+    const { mapLayer, terrainDecorationFactory, terrainFeatureDecorationFactory } =
+      createMapLayer();
 
     mapLayer.render(TEST_MAP, DEFAULT_MAP_RENDER_CONFIG);
     expectLayerCounts(mapLayer, {

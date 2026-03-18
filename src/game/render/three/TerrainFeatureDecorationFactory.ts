@@ -323,10 +323,7 @@ export class TerrainFeatureDecorationFactory {
       template.parts.forEach((part, meshIndex) => {
         const instancedMesh = new InstancedMesh(part.geometry, part.material, instances.length);
 
-        instancedMesh.name = buildMapTerrainFeatureBatchMeshObjectName(
-          terrainFeatureId,
-          meshIndex,
-        );
+        instancedMesh.name = buildMapTerrainFeatureBatchMeshObjectName(terrainFeatureId, meshIndex);
         instancedMesh.renderOrder = part.renderOrder;
         instancedMesh.userData.instanceMetadata = instances.map((instance, batchInstanceIndex) => ({
           batchInstanceIndex,
